@@ -1,0 +1,35 @@
+###
+POST http://localhost:8080/addToCart
+Content-Type: application/json
+
+{
+  "user": 1,
+  "sku":  111,
+  "count": 1
+}
+
+###
+POST http://localhost:8080/deleteFromCart
+Content-Type: application/json
+
+{
+  "user": 1,
+  "sku": 1,
+  "count":  1
+}
+
+###
+POST http://localhost:8080/listCart
+Content-Type: application/json
+
+{
+  "user": 111
+}
+
+###
+POST http://localhost:8080/purchase
+Content-Type: application/json
+
+{
+  "user": 1
+}

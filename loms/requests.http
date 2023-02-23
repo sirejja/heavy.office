@@ -1,0 +1,45 @@
+###
+POST http://localhost:8081/createOrder
+Content-Type: application/json
+
+{
+  "user": 1,
+  "items": [
+    {
+      "sku":  111,
+      "count": 2
+    }
+  ]
+}
+
+###
+POST http://localhost:8081/listOrder
+Content-Type: application/json
+
+{
+  "orderID": 111
+}
+
+###
+POST http://localhost:8081/orderPayed
+Content-Type: application/json
+
+{
+  "orderID": 111
+}
+
+###
+POST http://localhost:8081/cancelOrder
+Content-Type: application/json
+
+{
+  "orderID": 111
+}
+
+###
+POST http://localhost:8081/stocks
+Content-Type: application/json
+
+{
+  "sku": 111
+}
