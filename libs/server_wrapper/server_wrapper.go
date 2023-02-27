@@ -13,16 +13,17 @@ type Validator interface {
 }
 
 type Wrapper[Req Validator, Res any] struct {
-	fn func(ctx context.Context, req Req) (Res, error)
+	fn func(ctx context.Context, req Req) (*Res, error)
 }
 
-func New[Req Validator, Res any](fn func(ctx context.Context, req Req) (Res, error)) *Wrapper[Req, Res] {
+func New[Req Validator, Res any](fn func(ctx context.Context, req Req) (*Res, error)) *Wrapper[Req, Res] {
 	return &Wrapper[Req, Res]{
 		fn: fn,
 	}
 }
 
 func (w *Wrapper[Req, Res]) ServeHTTP(resWriter http.ResponseWriter, httpReq *http.Request) {
+
 	ctx := httpReq.Context()
 
 	limitedReader := io.LimitReader(httpReq.Body, 1_000_000)
@@ -49,7 +50,7 @@ func (w *Wrapper[Req, Res]) ServeHTTP(resWriter http.ResponseWriter, httpReq *ht
 		return
 	}
 
-	rawJSON, err := json.Marshal(response)
+	rawJSON, err := json.Marshal(*response)
 	if err != nil {
 		resWriter.WriteHeader(http.StatusInternalServerError)
 		writeErrorText(resWriter, "encoding JSON", err)

@@ -2,18 +2,22 @@ package add_to_cart_handler
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"route256/checkout/internal/usecase"
-	"route256/loms/pkg/models"
+	"route256/checkout/internal/models"
 )
 
-type Handler struct {
-	usecase usecase.Usecase
+type IService interface {
+	AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error
 }
 
-func New(usecase usecase.Usecase) *Handler {
+type Handler struct {
+	model IService
+}
+
+func New(service IService) *Handler {
 	return &Handler{
-		usecase: usecase,
+		model: service,
 	}
 }
 
@@ -38,15 +42,14 @@ func (r Request) Validate() error {
 
 type Response struct{}
 
-func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
-	log.Printf("addToCart: %+v", req)
+func (h *Handler) Handle(ctx context.Context, req Request) (*Response, error) {
+	op := "Handler.Handle"
+	log.Printf("add_to_cart_handler: %+v", req)
 
-	var response Response
-
-	err := h.usecase.Cart.AddToCart(ctx, req.User, req.Sku, req.Count)
+	err := h.model.AddToCart(ctx, req.User, req.Sku, req.Count)
 	if err != nil {
-		return response, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return response, nil
+	return &Response{}, nil
 }

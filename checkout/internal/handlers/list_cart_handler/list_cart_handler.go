@@ -2,19 +2,22 @@ package list_cart_handler
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"route256/checkout/internal/usecase"
-	"route256/checkout/internal/usecase/cart_processor"
-	"route256/loms/pkg/models"
+	"route256/checkout/internal/models"
 )
 
-type Handler struct {
-	usecase usecase.Usecase
+type IService interface {
+	ListCart(ctx context.Context, user int64) (*[]models.Product, *uint32, error)
 }
 
-func New(usecase usecase.Usecase) *Handler {
+type Handler struct {
+	model IService
+}
+
+func New(service IService) *Handler {
 	return &Handler{
-		usecase: usecase,
+		model: service,
 	}
 }
 
@@ -29,20 +32,40 @@ func (r Request) Validate() error {
 	return nil
 }
 
-type Response struct {
-	Items      []cart_processor.Item `json:"items"`
-	TotalPrice uint32                `json:"totalPrice"`
+type Item struct {
+	SKU   uint32 `json:"sku"`
+	Count uint16 `json:"count"`
+	Name  string `json:"name"`
+	Price uint32 `json:"price"`
 }
 
-func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
-	log.Printf("addToCart: %+v", req)
+type Response struct {
+	Items      []Item `json:"items"`
+	TotalPrice uint32 `json:"totalPrice"`
+}
 
+func (h *Handler) buildResponse(ctx context.Context, products []models.Product, totalPrice uint32) *Response {
 	var response Response
+	for _, product := range products {
+		response.Items = append(response.Items, Item{
+			SKU:   product.SKU,
+			Count: product.Count,
+			Name:  product.Name,
+			Price: product.Price,
+		})
+	}
+	response.TotalPrice = totalPrice
+	return &response
+}
 
-	items, totalPrice, err := h.usecase.Cart.ListCart(ctx, req.User)
+func (h *Handler) Handle(ctx context.Context, req Request) (*Response, error) {
+	op := "Handler.Handle"
+	log.Printf("list_cart_handler: %+v", req)
+
+	products, totalPrice, err := h.model.ListCart(ctx, req.User)
 	if err != nil {
-		return response, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return Response{Items: items, TotalPrice: totalPrice}, nil
+	return h.buildResponse(ctx, *products, *totalPrice), nil
 }

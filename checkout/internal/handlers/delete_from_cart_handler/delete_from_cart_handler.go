@@ -2,18 +2,22 @@ package delete_from_cart_handler
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"route256/checkout/internal/usecase"
-	"route256/loms/pkg/models"
+	"route256/checkout/internal/models"
 )
 
-type Handler struct {
-	usecase usecase.Usecase
+type IService interface {
+	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint16) error
 }
 
-func New(usecase usecase.Usecase) *Handler {
+type Handler struct {
+	model IService
+}
+
+func New(service IService) *Handler {
 	return &Handler{
-		usecase: usecase,
+		model: service,
 	}
 }
 
@@ -39,12 +43,13 @@ func (r Request) Validate() error {
 type Response struct {
 }
 
-func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
-	log.Printf("deleteFromCart: %+v", req)
+func (h *Handler) Handle(ctx context.Context, req Request) (*Response, error) {
+	op := "Handler.Handle"
+	log.Printf("delete_from_cart_handler: %+v", req)
 	var response Response
-	if err := h.usecase.Cart.DeleteFromCart(ctx, req.User, req.SKU, req.Count); err != nil {
-		return response, models.ErrSomeErr
+	if err := h.model.DeleteFromCart(ctx, req.User, req.SKU, req.Count); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return response, nil
+	return &response, nil
 }

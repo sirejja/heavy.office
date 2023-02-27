@@ -2,25 +2,27 @@ package purchase_handler
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"route256/checkout/internal/usecase"
-	"route256/loms/pkg/models"
+	"route256/checkout/internal/models"
 )
 
-type Handler struct {
-	usecase usecase.Usecase
+type IService interface {
+	PurchaseCart(ctx context.Context, user int64) (*uint64, error)
 }
 
-func New(usecase usecase.Usecase) *Handler {
+type Handler struct {
+	model IService
+}
+
+func New(service IService) *Handler {
 	return &Handler{
-		usecase: usecase,
+		model: service,
 	}
 }
 
 type Request struct {
-	User  int64  `json:"user"`
-	Sku   uint32 `json:"sku"`
-	Count uint16 `json:"count"`
+	User int64 `json:"user"`
 }
 
 func (r Request) Validate() error {
@@ -30,17 +32,18 @@ func (r Request) Validate() error {
 	return nil
 }
 
-type Response struct{}
+type Response struct {
+	OrderId *uint64 `json:"orderID"`
+}
 
-func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
-	log.Printf("addToCart: %+v", req)
+func (h *Handler) Handle(ctx context.Context, req Request) (*Response, error) {
+	op := "Handler.Handle"
+	log.Printf("purchase_handler: %+v", req)
 
-	var response Response
-
-	err := h.usecase.Cart.PurchaseCart(ctx, req.User)
+	orderID, err := h.model.PurchaseCart(ctx, req.User)
 	if err != nil {
-		return response, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return response, nil
+	return &Response{orderID}, nil
 }

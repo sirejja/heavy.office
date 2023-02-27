@@ -5,35 +5,37 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"net/http"
 )
 
 func Post[Req any, Res any](ctx context.Context, url string, request Req) (Res, error) {
+	op := "Post"
+
 	var response Res
 
 	rawJSON, err := json.Marshal(request)
 	if err != nil {
-		return response, errors.WithMessage(err, "marshaling json")
+		return response, fmt.Errorf("%s: %w", op, err)
 	}
 
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(rawJSON))
 	if err != nil {
-		return response, errors.WithMessage(err, "creating http request")
+		return response, fmt.Errorf("%s: %w", op, err)
 	}
 
 	httpResponse, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
-		return response, errors.WithMessage(err, "calling http")
+		return response, fmt.Errorf("%s: %w", op, err)
 	}
 	defer httpResponse.Body.Close()
 
 	if httpResponse.StatusCode != http.StatusOK {
-		return response, fmt.Errorf("wrong status code: %d", httpResponse.StatusCode)
+		return response, fmt.Errorf("%s: %w", op, err)
+
 	}
 
 	if err := json.NewDecoder(httpResponse.Body).Decode(&response); err != nil {
-		return response, errors.WithMessage(err, "decoding json")
+		return response, fmt.Errorf("%s: %w", op, err)
 	}
 	return response, nil
 }
