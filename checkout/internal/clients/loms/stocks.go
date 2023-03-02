@@ -3,38 +3,20 @@ package loms
 import (
 	"context"
 	"fmt"
-	"route256/libs/client_wrapper"
+	loms_service "route256/checkout/internal/grpc/clients/loms"
+	"route256/checkout/internal/models"
 )
 
-type StocksRequest struct {
-	SKU uint32 `json:"sku"`
-}
-
-type StocksItem struct {
-	WarehouseID int64  `json:"warehouseID"`
-	Count       uint64 `json:"count"`
-}
-
-type StocksResponse struct {
-	Stocks []StocksItem `json:"stocks"`
-}
-
-type Stock struct {
-	WarehouseID int64
-	Count       uint64
-}
-
-func (c *Client) Stocks(ctx context.Context, sku uint32) ([]Stock, error) {
+func (c *Client) Stocks(ctx context.Context, sku uint32) ([]models.Stock, error) {
 	op := "Client.Stocks"
 
-	request := StocksRequest{SKU: sku}
-	response, err := client_wrapper.Post[StocksRequest, StocksResponse](ctx, c.urlStocks, request)
+	response, err := c.client.Stocks(ctx, &loms_service.StocksRequest{Sku: sku})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	stocks := make([]Stock, 0, len(response.Stocks))
-	for _, stock := range response.Stocks {
-		stocks = append(stocks, Stock(stock))
+	stocks := make([]models.Stock, 0, len(response.Stocks))
+	for _, stock := range response.GetStocks() {
+		stocks = append(stocks, models.Stock{WarehouseID: stock.GetWarehouseID(), Count: stock.GetCount()})
 	}
 
 	return stocks, nil

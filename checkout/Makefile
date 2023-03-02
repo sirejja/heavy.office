@@ -15,7 +15,10 @@ test:
 	go test ./...
 
 run:
-	go run ${PACKAGE}
+	make precommit && go run ${PACKAGE}
+
+run-with-precommit:
+	make precommit && make run
 
 lint: install-lint
 	${LINTBIN} run
@@ -38,3 +41,53 @@ install-smartimports: bindir
 	test -f ${SMARTIMPORTS} || \
 		(GOBIN=${BINDIR} go install github.com/pav5000/smartimports/cmd/smartimports@latest && \
 		mv ${BINDIR}/smartimports ${SMARTIMPORTS})
+
+vendor-proto:
+		mkdir -p vendor-proto
+		@if [ ! -d vendor-proto/google ]; then \
+			git clone https://github.com/googleapis/googleapis vendor-proto/googleapis &&\
+			mkdir -p  vendor-proto/google/ &&\
+			mv vendor-proto/googleapis/google/api vendor-proto/google &&\
+			rm -rf vendor-proto/googleapis ;\
+		fi
+		@if [ ! -d vendor-proto/google/protobuf ]; then\
+			git clone https://github.com/protocolbuffers/protobuf vendor-proto/protobuf &&\
+			mkdir -p  vendor-proto/google/protobuf &&\
+			mv vendor-proto/protobuf/src/google/protobuf/*.proto vendor-proto/google/protobuf &&\
+			rm -rf vendor-proto/protobuf ;\
+		fi
+
+install-go-deps:
+	GOBIN=${BINDIR} go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
+	GOBIN=${BINDIR} go install -mod=mod google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+
+
+prepare-grpc-deps:
+	make vendor-proto && make install-go-deps
+
+generate_server:
+	mkdir -p pkg/grpc/server
+	protoc -I pb/server -I vendor-proto \
+		--go_out=pkg/grpc/server --go_opt=paths=source_relative \
+		--plugin=protoc-gen-go=bin/protoc-gen-go \
+        --go-grpc_out=pkg/grpc/server --go-grpc_opt=paths=source_relative \
+        --plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
+        pb/server/server.proto
+
+generate_loms_client:
+	mkdir -p internal/grpc/clients/loms
+	protoc -I pb/clients/loms -I vendor-proto \
+		--go_out=internal/grpc/clients/loms --go_opt=paths=source_relative \
+		--plugin=protoc-gen-go=bin/protoc-gen-go \
+        --go-grpc_out=internal/grpc/clients/loms --go-grpc_opt=paths=source_relative \
+        --plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
+        pb/clients/loms/loms.proto
+
+generate_product_service_client:
+	mkdir -p internal/grpc/clients/product_service
+	protoc -I pb/clients/product_service -I vendor-proto \
+		--go_out=internal/grpc/clients/product_service --go_opt=paths=source_relative \
+		--plugin=protoc-gen-go=bin/protoc-gen-go \
+        --go-grpc_out=internal/grpc/clients/product_service --go-grpc_opt=paths=source_relative \
+        --plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
+        pb/clients/product_service/product_service.proto
