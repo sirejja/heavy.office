@@ -1,0 +1,9 @@
+###
+POST http://localhost:8080/addToCart
+Content-Type: application/json
+
+{
+  "user": 1,
+  "sku": 11,
+  "count":  1
+}

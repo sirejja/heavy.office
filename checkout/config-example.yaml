@@ -1,0 +1,7 @@
+web_port: 8080
+services:
+    loms:
+        url: http://loms:8081
+    products-service:
+        token: testtoken
+        url: http://route256.pavl.uk:8080
