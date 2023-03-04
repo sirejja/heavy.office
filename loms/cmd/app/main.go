@@ -3,14 +3,14 @@ package main
 import (
 	"log"
 	"net"
+	"route256/libs/interceptors"
 	v1 "route256/loms/internal/api/v1"
 	"route256/loms/internal/config"
-	"route256/loms/internal/interceptors"
-	"route256/loms/internal/repo/order_repo"
-	"route256/loms/internal/repo/warehouse_repo"
+	"route256/loms/internal/repositories/order_repo"
+	"route256/loms/internal/repositories/warehouse_repo"
 	"route256/loms/internal/services/orders"
 	"route256/loms/internal/services/warehouse"
-	desc "route256/loms/pkg/grpc/server"
+	desc "route256/loms/pkg/v1/api"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
@@ -44,7 +44,7 @@ func main() {
 		),
 	)
 	reflection.Register(server)
-	desc.RegisterLomsServer(server, v1.New(*warehouseProcessor, ordersProcessor))
+	desc.RegisterLomsServer(server, v1.New(warehouseProcessor, ordersProcessor))
 
 	log.Println("grpc server listening at", port)
 	if err = server.Serve(lis); err != nil {

@@ -12,7 +12,7 @@ type Stock struct {
 	Count       uint64
 }
 
-type Items struct {
+type Item struct {
 	SKU   uint32
 	Count uint32
 }

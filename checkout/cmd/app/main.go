@@ -7,12 +7,13 @@ import (
 	"route256/checkout/internal/clients/loms"
 	"route256/checkout/internal/clients/products"
 	"route256/checkout/internal/config"
-	"route256/checkout/internal/interceptors"
 	"route256/checkout/internal/services/cart"
-	desc "route256/checkout/pkg/grpc/server"
+	desc "route256/checkout/pkg/v1/api"
+	"route256/libs/interceptors"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -24,13 +25,26 @@ func main() {
 		log.Fatal("config init", err)
 	}
 
-	lomsClient, err := loms.New(cfg.Services.Loms.URL)
+	lomsConn, err := grpc.Dial(cfg.Services.Loms.URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("failed to connect to lomsClient", err)
 	}
-	productsClient, err := products.New(cfg.Services.Products.URL, cfg.Services.Products.Token)
+	defer lomsConn.Close()
+
+	lomsClient, err := loms.New(lomsConn)
+	if err != nil {
+		log.Fatal("failed to create lomsClient", err)
+	}
+
+	productsServiceConn, err := grpc.Dial(cfg.Services.Products.URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("failed to connect to productsClient", err)
+	}
+	defer productsServiceConn.Close()
+
+	productsClient, err := products.New(productsServiceConn, cfg.Services.Products.Token)
+	if err != nil {
+		log.Fatal("failed to create productsClient", err)
 	}
 
 	cartProcessor := cart.New(lomsClient, productsClient)
@@ -48,7 +62,7 @@ func main() {
 		),
 	)
 	reflection.Register(server)
-	desc.RegisterCheckoutServer(server, v1.New(*cartProcessor))
+	desc.RegisterCheckoutServer(server, v1.New(cartProcessor))
 
 	log.Println("grpc server listening at", port)
 	if err = server.Serve(lis); err != nil {

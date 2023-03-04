@@ -4,12 +4,24 @@ import (
 	"context"
 	"fmt"
 	"log"
-	desc "route256/checkout/pkg/grpc/server"
+	"route256/checkout/internal/models"
+	desc "route256/checkout/pkg/v1/api"
 )
 
-func (s *Server) ListCart(ctx context.Context, req *desc.ListCartRequest) (*desc.ListCartResponse, error) {
-	op := "Server.ListCart"
+func ValidateListCart(r *desc.ListCartRequest) error {
+	if r.GetUser() == 0 {
+		return models.ErrEmptyUser
+	}
+	return nil
+}
+
+func (s *Implementation) ListCart(ctx context.Context, req *desc.ListCartRequest) (*desc.ListCartResponse, error) {
+	op := "Implementation.ListCart"
 	log.Printf("list_cart_handler: %+v", req)
+
+	if err := ValidateListCart(req); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
 	products, totalPrice, err := s.model.ListCart(ctx, req.GetUser())
 	if err != nil {

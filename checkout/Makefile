@@ -37,11 +37,6 @@ install-lint: bindir
 		(GOBIN=${BINDIR} go install github.com/golangci/golangci-lint/cmd/golangci-lint@${LINTVER} && \
 		mv ${BINDIR}/golangci-lint ${LINTBIN})
 
-install-smartimports: bindir
-	test -f ${SMARTIMPORTS} || \
-		(GOBIN=${BINDIR} go install github.com/pav5000/smartimports/cmd/smartimports@latest && \
-		mv ${BINDIR}/smartimports ${SMARTIMPORTS})
-
 vendor-proto:
 		mkdir -p vendor-proto
 		@if [ ! -d vendor-proto/google ]; then \
@@ -49,6 +44,12 @@ vendor-proto:
 			mkdir -p  vendor-proto/google/ &&\
 			mv vendor-proto/googleapis/google/api vendor-proto/google &&\
 			rm -rf vendor-proto/googleapis ;\
+		fi
+		@if [ ! -d vendor-proto/github.com/envoyproxy ]; then \
+        			mkdir -p vendor-proto/validate &&\
+        			git clone https://github.com/envoyproxy/protoc-gen-validate vendor-proto/protoc-gen-validate &&\
+        			mv vendor-proto/protoc-gen-validate/validate/*.proto vendor-proto/validate &&\
+        			rm -r -f vendor-proto/protoc-gen-validate ;\
 		fi
 		@if [ ! -d vendor-proto/google/protobuf ]; then\
 			git clone https://github.com/protocolbuffers/protobuf vendor-proto/protobuf &&\
@@ -60,34 +61,23 @@ vendor-proto:
 install-go-deps:
 	GOBIN=${BINDIR} go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1
 	GOBIN=${BINDIR} go install -mod=mod google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
-
+	GOBIN=${BINDIR} go install -mod=mod github.com/envoyproxy/protoc-gen-validate@v0.9.0
 
 prepare-grpc-deps:
 	make vendor-proto && make install-go-deps
 
+install-smartimports: bindir
+	test -f ${SMARTIMPORTS} || \
+		(GOBIN=${BINDIR} go install github.com/pav5000/smartimports/cmd/smartimports@latest && \
+		mv ${BINDIR}/smartimports ${SMARTIMPORTS})
+
 generate_server:
-	mkdir -p pkg/grpc/server
-	protoc -I pb/server -I vendor-proto \
-		--go_out=pkg/grpc/server --go_opt=paths=source_relative \
+	mkdir -p pkg/v1/api
+	protoc -I api/v1 -I vendor-proto \
+		--go_out=pkg/v1/api --go_opt=paths=source_relative \
 		--plugin=protoc-gen-go=bin/protoc-gen-go \
-        --go-grpc_out=pkg/grpc/server --go-grpc_opt=paths=source_relative \
-        --plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
-        pb/server/server.proto
-
-generate_loms_client:
-	mkdir -p internal/grpc/clients/loms
-	protoc -I pb/clients/loms -I vendor-proto \
-		--go_out=internal/grpc/clients/loms --go_opt=paths=source_relative \
-		--plugin=protoc-gen-go=bin/protoc-gen-go \
-        --go-grpc_out=internal/grpc/clients/loms --go-grpc_opt=paths=source_relative \
-        --plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
-        pb/clients/loms/loms.proto
-
-generate_product_service_client:
-	mkdir -p internal/grpc/clients/product_service
-	protoc -I pb/clients/product_service -I vendor-proto \
-		--go_out=internal/grpc/clients/product_service --go_opt=paths=source_relative \
-		--plugin=protoc-gen-go=bin/protoc-gen-go \
-        --go-grpc_out=internal/grpc/clients/product_service --go-grpc_opt=paths=source_relative \
-        --plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
-        pb/clients/product_service/product_service.proto
+		--go-grpc_out=pkg/v1/api --go-grpc_opt=paths=source_relative \
+		--plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
+		--validate_out lang=go:pkg/v1/api --validate_opt=paths=source_relative\
+		--plugin=protoc-gen-validate=bin/protoc-gen-validate \
+		api/v1/checkout_v1.proto

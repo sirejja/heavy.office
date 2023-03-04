@@ -3,8 +3,8 @@ package products
 import (
 	"context"
 	"fmt"
-	"route256/checkout/internal/grpc/clients/product_service"
 	"route256/checkout/internal/models"
+	product_service "route256/product_service/pkg/v1/api"
 )
 
 func (c *Client) GetProduct(ctx context.Context, sku uint32) (*models.ProductAttrs, error) {

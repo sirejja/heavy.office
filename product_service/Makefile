@@ -4,7 +4,7 @@ GOVER=$(shell go version | perl -nle '/(go\d\S+)/; print $$1;')
 SMARTIMPORTS=${BINDIR}/smartimports_${GOVER}
 LINTVER=v1.51.1
 LINTBIN=${BINDIR}/lint_${GOVER}_${LINTVER}
-PACKAGE=route256/loms/cmd/app
+PACKAGE=route256/product_service/cmd/app
 
 all: format build test lint
 
@@ -80,4 +80,4 @@ generate_server:
 		--plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
 		--validate_out lang=go:pkg/v1/api --validate_opt=paths=source_relative\
 		--plugin=protoc-gen-validate=bin/protoc-gen-validate \
-		api/v1/loms_v1.proto
+		api/v1/products_service_v1.proto

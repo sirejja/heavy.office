@@ -3,19 +3,19 @@ package loms
 import (
 	"context"
 	"fmt"
-	lomsservice "route256/checkout/internal/grpc/clients/loms"
 	"route256/checkout/internal/models"
+	loms_service "route256/loms/pkg/v1/api"
 )
 
-func (c *Client) CreateOrder(ctx context.Context, user int64, items []models.Items) (int64, error) {
+func (c *Client) CreateOrder(ctx context.Context, user int64, items []models.Item) (int64, error) {
 	op := "Client.CreateOrder"
-	requestItems := make([]*lomsservice.Item, len(items))
+	requestItems := make([]*loms_service.Item, len(items))
 	for _, item := range items {
-		requestItems = append(requestItems, &lomsservice.Item{
+		requestItems = append(requestItems, &loms_service.Item{
 			Sku: item.SKU, Count: item.Count,
 		})
 	}
-	response, err := c.client.CreateOrder(ctx, &lomsservice.CreateOrderRequest{
+	response, err := c.client.CreateOrder(ctx, &loms_service.CreateOrderRequest{
 		User:  user,
 		Items: requestItems,
 	})

@@ -3,8 +3,8 @@ package loms
 import (
 	"context"
 	"fmt"
-	loms_service "route256/checkout/internal/grpc/clients/loms"
 	"route256/checkout/internal/models"
+	loms_service "route256/loms/pkg/v1/api"
 )
 
 func (c *Client) Stocks(ctx context.Context, sku uint32) ([]models.Stock, error) {
