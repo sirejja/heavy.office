@@ -1,2 +1,4 @@
-/bin
+bin
 config.yaml
+vendor-proto
+vendor

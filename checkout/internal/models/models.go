@@ -1,17 +1,23 @@
 package models
 
-import "github.com/pkg/errors"
-
-var (
-	ErrEmptySKU           = errors.New("empty sku")
-	ErrEmptyUser          = errors.New("empty user")
-	ErrEmptyCount         = errors.New("empty count")
-	ErrInsufficientStocks = errors.New("insufficient stocks_handler")
-)
-
-type Product struct {
+type CartProduct struct {
 	SKU   uint32
-	Count uint16
+	Count uint32
+	Name  string
+	Price uint32
+}
+
+type Stock struct {
+	WarehouseID int64
+	Count       uint64
+}
+
+type Item struct {
+	SKU   uint32
+	Count uint32
+}
+
+type ProductAttrs struct {
 	Name  string
 	Price uint32
 }

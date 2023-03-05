@@ -11,3 +11,7 @@ precommit:
 	cd checkout && make precommit
 	cd loms && make precommit
 	cd notifications && make precommit
+
+prepare-grpc-deps:
+	cd checkout && make prepare-grpc-deps
+	cd loms && make prepare-grpc-deps

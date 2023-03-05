@@ -1,19 +1,26 @@
 package products
 
-const (
-	GetProductPath = "/get_product"
+import (
+	"context"
+	"route256/checkout/internal/models"
+	product_service "route256/product_service/pkg/v1/api"
+
+	"google.golang.org/grpc"
 )
 
-type Client struct {
-	url            string
-	token          string
-	urlGetProducts string
+type IProductServiceClient interface {
+	GetProduct(ctx context.Context, sku uint32) (*models.ProductAttrs, error)
 }
 
-func New(url, token string) *Client {
+type Client struct {
+	client product_service.ProductServiceClient
+	token  string
+}
+
+func New(conn *grpc.ClientConn, token string) (*Client, error) {
 	return &Client{
-		url:            url,
-		token:          token,
-		urlGetProducts: url + GetProductPath,
-	}
+		token: token,
+
+		client: product_service.NewProductServiceClient(conn),
+	}, nil
 }

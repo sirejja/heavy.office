@@ -8,18 +8,18 @@ import (
 )
 
 type ICartProcessor interface {
-	AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error
-	ListCart(ctx context.Context, user int64) (*[]models.Product, *uint32, error)
-	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint16) error
-	PurchaseCart(ctx context.Context, user int64) (*uint64, error)
+	AddToCart(ctx context.Context, user int64, sku uint32, count uint32) error
+	ListCart(ctx context.Context, user int64) ([]models.CartProduct, uint32, error)
+	DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint32) error
+	PurchaseCart(ctx context.Context, user int64) (int64, error)
 }
 
 type Cart struct {
-	lomsClient     *loms.Client
-	productsClient *products.Client
+	lomsClient     loms.ILOMSClient
+	productsClient products.IProductServiceClient
 }
 
-func New(lomsClient *loms.Client, productsClient *products.Client) ICartProcessor {
+func New(lomsClient loms.ILOMSClient, productsClient products.IProductServiceClient) *Cart {
 	return &Cart{
 		lomsClient:     lomsClient,
 		productsClient: productsClient,
