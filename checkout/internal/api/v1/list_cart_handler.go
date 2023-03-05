@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"log"
 	"route256/checkout/internal/models"
 	desc "route256/checkout/pkg/v1/api"
 )
@@ -17,7 +16,6 @@ func ValidateListCart(r *desc.ListCartRequest) error {
 
 func (s *Implementation) ListCart(ctx context.Context, req *desc.ListCartRequest) (*desc.ListCartResponse, error) {
 	op := "Implementation.ListCart"
-	log.Printf("list_cart_handler: %+v", req)
 
 	if err := ValidateListCart(req); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

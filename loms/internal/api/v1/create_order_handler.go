@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"log"
 	"route256/loms/internal/models"
 	desc "route256/loms/pkg/v1/api"
 )
@@ -23,19 +22,18 @@ func ValidateCreateOrder(r *desc.CreateOrderRequest) error {
 	return nil
 }
 
-func (s *Server) CreateOrder(ctx context.Context, req *desc.CreateOrderRequest) (*desc.CreateOrderResponse, error) {
-	op := "Server.CreateOrder"
-	log.Printf("create_order_handler: %+v", req)
+func (s *Implementation) CreateOrder(ctx context.Context, req *desc.CreateOrderRequest) (*desc.CreateOrderResponse, error) {
+	op := "Implementation.CreateOrder"
 
 	if err := ValidateCreateOrder(req); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	items := make([]models.Item, len(req.GetItems()))
+	items := make([]models.Item, 0, len(req.GetItems()))
 	for _, item := range req.GetItems() {
 		items = append(items, models.Item{SKU: item.GetCount(), Count: item.GetCount()})
 	}
-	orderID, err := s.orders.CreateOrder(ctx, req.User, items)
+	orderID, err := s.orders.CreateOrder(ctx, req.GetUser(), items)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

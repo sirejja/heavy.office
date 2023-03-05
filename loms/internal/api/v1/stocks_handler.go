@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"log"
 	"route256/loms/internal/models"
 	desc "route256/loms/pkg/v1/api"
 )
@@ -15,9 +14,8 @@ func ValidateStocksRequest(r *desc.StocksRequest) error {
 	return nil
 }
 
-func (s *Server) Stocks(ctx context.Context, req *desc.StocksRequest) (*desc.StocksResponse, error) {
-	op := "Server.Stocks"
-	log.Printf("stocks_handler: %+v", req)
+func (s *Implementation) Stocks(ctx context.Context, req *desc.StocksRequest) (*desc.StocksResponse, error) {
+	op := "Implementation.Stocks"
 
 	if err := ValidateStocksRequest(req); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -28,7 +26,7 @@ func (s *Server) Stocks(ctx context.Context, req *desc.StocksRequest) (*desc.Sto
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	stocksResp := make([]*desc.Stock, len(stocks))
+	stocksResp := make([]*desc.Stock, 0, len(stocks))
 	for _, stock := range stocks {
 		stocksResp = append(stocksResp, &desc.Stock{Count: stock.Count, WarehouseID: stock.WarehouseID})
 	}

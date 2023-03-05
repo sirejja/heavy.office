@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"log"
 	"route256/loms/internal/models"
 	desc "route256/loms/pkg/v1/api"
 
@@ -17,9 +16,8 @@ func ValidateOrderPayed(r *desc.OrderPayedRequest) error {
 	return nil
 }
 
-func (s *Server) OrderPayed(ctx context.Context, req *desc.OrderPayedRequest) (*emptypb.Empty, error) {
-	op := "Server.OrderPayed"
-	log.Printf("payed_order_handler: %+v", req)
+func (s *Implementation) OrderPayed(ctx context.Context, req *desc.OrderPayedRequest) (*emptypb.Empty, error) {
+	op := "Implementation.OrderPayed"
 
 	if err := ValidateOrderPayed(req); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

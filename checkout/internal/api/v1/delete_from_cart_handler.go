@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"log"
 	"route256/checkout/internal/models"
 	desc "route256/checkout/pkg/v1/api"
 
@@ -25,7 +24,6 @@ func ValidateDeleteFromCart(r *desc.DeleteFromCartRequest) error {
 
 func (s *Implementation) DeleteFromCart(ctx context.Context, req *desc.DeleteFromCartRequest) (*emptypb.Empty, error) {
 	op := "Implementation.DeleteFromCart"
-	log.Printf("delete_from_cart_handler: %+v", req)
 
 	if err := ValidateDeleteFromCart(req); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

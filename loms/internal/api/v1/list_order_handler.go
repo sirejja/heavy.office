@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"log"
 	"route256/loms/internal/models"
 	desc "route256/loms/pkg/v1/api"
 )
@@ -15,9 +14,8 @@ func ValidateListOrder(r *desc.ListOrderRequest) error {
 	return nil
 }
 
-func (s *Server) ListOrder(ctx context.Context, req *desc.ListOrderRequest) (*desc.ListOrderResponse, error) {
-	op := "Server.ListOrder"
-	log.Printf("list_order_handler: %+v", req)
+func (s *Implementation) ListOrder(ctx context.Context, req *desc.ListOrderRequest) (*desc.ListOrderResponse, error) {
+	op := "Implementation.ListOrder"
 
 	if err := ValidateListOrder(req); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

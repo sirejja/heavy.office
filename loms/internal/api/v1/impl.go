@@ -6,17 +6,17 @@ import (
 	desc "route256/loms/pkg/v1/api"
 )
 
-type Server struct {
+type Implementation struct {
 	warehouse warehouse.IWarehouseService
 	orders    orders.IOrdersService
 
 	desc.UnimplementedLomsServer
 }
 
-var _ desc.LomsServer = (*Server)(nil)
+var _ desc.LomsServer = (*Implementation)(nil)
 
-func New(warehouse warehouse.IWarehouseService, orders orders.IOrdersService) *Server {
-	return &Server{
+func New(warehouse warehouse.IWarehouseService, orders orders.IOrdersService) *Implementation {
+	return &Implementation{
 		warehouse: warehouse,
 		orders:    orders,
 	}
