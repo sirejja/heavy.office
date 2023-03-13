@@ -1,3 +1,86 @@
+
+
+# Checkout
+
+Сервис отвечает за корзину и оформление заказа.
+
+## addToCart
+
+Добавить товар в корзину определенного пользователя. При этом надо проверить наличие товара через LOMS.stocks
+
+Request
+```
+{
+    user int64
+    sku  uint32
+    count uint16
+}
+```
+
+Response
+```
+{}
+```
+
+## deleteFromCart
+
+Удалить товар из корзины определенного пользователя.
+
+Request
+```
+{
+    user int64
+    sku uint32
+    count uint16
+}
+```
+
+Response
+```
+{}
+```
+
+## listCart
+
+Показать список товаров в корзине с именами и ценами (их надо в реальном времени получать из ProductService)
+
+Request
+```
+{
+    user int64
+}
+```
+
+Response
+```
+{
+    items []{
+        sku uint32
+        count uint16
+        name string
+        price uint32
+    }
+    totalPrice uint32
+}
+```
+
+## purchase
+
+Оформить заказ по всем товарам корзины. Вызывает createOrder у LOMS.
+
+Request
+```
+{
+    user int64
+}
+```
+
+Response
+```
+{
+    orderID int64
+}
+```
 # LOMS (Logistics and Order Management System)
 
 Сервис отвечает за учет заказов и логистику.
@@ -100,89 +183,6 @@ Response
     }
 }
 ```
-
-# Checkout
-
-Сервис отвечает за корзину и оформление заказа.
-
-## addToCart
-
-Добавить товар в корзину определенного пользователя. При этом надо проверить наличие товара через LOMS.stocks
-
-Request
-```
-{
-    user int64
-    sku  uint32
-    count uint16
-}
-```
-
-Response
-```
-{}
-```
-
-## deleteFromCart
-
-Удалить товар из корзины определенного пользователя.
-
-Request
-```
-{
-    user int64
-    sku uint32
-    count uint16
-}
-```
-
-Response
-```
-{}
-```
-
-## listCart
-
-Показать список товаров в корзине с именами и ценами (их надо в реальном времени получать из ProductService)
-
-Request
-```
-{
-    user int64
-}
-```
-
-Response
-```
-{
-    items []{
-        sku uint32
-        count uint16
-        name string
-        price uint32
-    }
-    totalPrice uint32
-}
-```
-
-## purchase
-
-Оформить заказ по всем товарам корзины. Вызывает createOrder у LOMS.
-
-Request
-```
-{
-    user int64
-}
-```
-
-Response
-```
-{
-    orderID int64
-}
-```
-
 # Notifications
 
 Будет слушать Кафку и отправлять уведомления, внешнего API нет.

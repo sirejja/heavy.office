@@ -1,15 +1,108 @@
-version: "3.1"
+version: "3.9"
+
+networks:
+  net:
+    driver: bridge
+
 services:
   checkout:
     image: checkout
     build: ./checkout/
     ports:
       - "8080:8080"
+    networks:
+      - net
+    depends_on:
+      checkout-pgbouncer:
+        condition: service_started
+    env_file:
+      - ./checkout/.env
+    restart: unless-stopped
+
+  checkout-pgbouncer:
+    image: bitnami/pgbouncer:1.18.0
+    ports:
+      - "6432:6432"
+    networks:
+      - net
+    env_file:
+      - ./checkout/.env
+    environment:
+      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: "extra_float_digits"
+    restart: unless-stopped
+    depends_on:
+      checkout-postgres:
+        condition: service_started
+
+  checkout-postgres:
+    image: postgres:15.2
+    environment:
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    container_name: "postgres-checkout"
+    volumes:
+      - ./checkout/.pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+    networks:
+      - net
+    env_file:
+      - ./checkout/.env
+
   loms:
     image: loms
     build: ./loms/
     ports:
       - "8081:8081"
+    networks:
+      - net
+    depends_on:
+      loms-pgbouncer:
+        condition: service_started
+    env_file:
+      - ./loms/.env
+    restart: unless-stopped
+
+  loms-pgbouncer:
+    image: bitnami/pgbouncer:1.18.0
+    ports:
+      - "8432:8432"
+    networks:
+      - net
+    restart: unless-stopped
+    env_file:
+      - ./loms/.env
+    environment:
+      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: "extra_float_digits"
+    depends_on:
+      loms-postgres:
+        condition: service_started
+
+  loms-postgres:
+    image: postgres:15.2
+    environment:
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    container_name: 'postgres-loms'
+    volumes:
+      - ./loms/.pgdata:/var/lib/postgresql/data
+    ports:
+      - "7432:7432"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 4G
+    networks:
+      - net
+    env_file:
+      - ./loms/.env
+
   # notification:
   #   image: notification
   #   build: ./notification

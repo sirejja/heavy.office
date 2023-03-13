@@ -81,3 +81,7 @@ generate_server:
 		--validate_out lang=go:pkg/v1/api --validate_opt=paths=source_relative\
 		--plugin=protoc-gen-validate=bin/protoc-gen-validate \
 		api/v1/loms_v1.proto
+
+run_migrations:
+	goose -dir ./migrations postgres $(PG_DSN) status
+	goose -dir ./migrations postgres $(PG_DSN) up

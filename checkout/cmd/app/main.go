@@ -1,17 +1,22 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	v1 "route256/checkout/internal/api/v1"
 	"route256/checkout/internal/clients/loms"
 	"route256/checkout/internal/clients/products"
 	"route256/checkout/internal/config"
+	"route256/checkout/internal/repositories/carts_products_repo"
+	"route256/checkout/internal/repositories/carts_repo"
 	"route256/checkout/internal/services/cart"
 	desc "route256/checkout/pkg/v1/api"
 	"route256/libs/interceptors"
+	"time"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
@@ -24,6 +29,24 @@ func main() {
 	if err := cfg.Init(); err != nil {
 		log.Fatal("config init", err)
 	}
+
+	postgresConfig, err := pgxpool.ParseConfig(cfg.Storage.PostgresDSN)
+	if err != nil {
+		log.Fatal("can not parse postgres DSN", err)
+	}
+	postgresConfig.MaxConnIdleTime = time.Minute
+	postgresConfig.MaxConnLifetime = time.Hour
+	postgresConfig.MinConns = 1
+	postgresConfig.MaxConns = 2
+
+	pool, err := pgxpool.ConnectConfig(context.Background(), postgresConfig)
+	if err != nil {
+		log.Fatal("Unable to connect to database", err)
+	}
+	defer pool.Close()
+
+	cartsRepo := carts_repo.New(pool)
+	cartsProductsRepo := carts_products_repo.New(pool)
 
 	lomsConn, err := grpc.Dial(cfg.Services.Loms.URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -47,7 +70,7 @@ func main() {
 		log.Fatal("failed to create productsClient", err)
 	}
 
-	cartProcessor := cart.New(lomsClient, productsClient)
+	cartProcessor := cart.New(lomsClient, productsClient, cartsRepo, cartsProductsRepo)
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
