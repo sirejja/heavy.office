@@ -11,24 +11,12 @@ import (
 func (c *Cart) AddToCart(ctx context.Context, user int64, sku uint32, count uint32) error {
 	op := "Cart.AddToCart"
 
-	stocks, err := c.lomsClient.Stocks(ctx, sku)
+	_, err := c.checkStocks(ctx, sku, count)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	counter := int64(count)
-	for _, stock := range stocks {
-		counter -= int64(stock.Count)
-		if counter <= 0 {
-			break
-		}
-	}
-	if counter > 0 {
-		return fmt.Errorf("%s: %w", op, models.ErrInsufficientStocks)
-	}
-	// TODO switch to get row
 	cart, err := c.cartsRepo.GetCarts(ctx, &carts_repo.GetCartFilter{UserId: user, IsDeleted: false})
-
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -72,4 +60,26 @@ func (c *Cart) AddToCart(ctx context.Context, user int64, sku uint32, count uint
 	}
 
 	return nil
+}
+
+func (c *Cart) checkStocks(ctx context.Context, sku uint32, count uint32) ([]models.Stock, error) {
+	op := "Cart.checkStocks"
+
+	stocks, err := c.lomsClient.Stocks(ctx, sku)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	counter := int64(count)
+	for _, stock := range stocks {
+		counter -= int64(stock.Count)
+		if counter <= 0 {
+			break
+		}
+	}
+	if counter > 0 {
+		return nil, fmt.Errorf("%s: %w", op, models.ErrInsufficientStocks)
+	}
+
+	return stocks, nil
 }

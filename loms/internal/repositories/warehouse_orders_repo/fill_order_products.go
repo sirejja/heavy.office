@@ -6,6 +6,7 @@ import (
 	"route256/loms/internal/models"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/georgysavva/scany/pgxscan"
 )
 
 type FillOrderProductsIns struct {
@@ -16,6 +17,7 @@ type FillOrderProductsIns struct {
 
 func (w *warehouseOrdersRepo) FillOrderProducts(ctx context.Context, ins *FillOrderProductsIns) (uint64, error) {
 	op := "WarehouseOrdersRepo.FillOrderProducts"
+	db := w.db.GetQueryEngine(ctx)
 
 	if ins == nil {
 		return 0, fmt.Errorf("%s: %w", op, models.ErrNoDataProvided)
@@ -34,8 +36,10 @@ func (w *warehouseOrdersRepo) FillOrderProducts(ctx context.Context, ins *FillOr
 	}
 
 	var id uint64
-
-	if err = w.db.QueryRow(ctx, sql, args...).Scan(&id); err != nil {
+	if err = pgxscan.Get(ctx, db, &id, sql, args...); err != nil {
+		if pgxscan.NotFound(err) {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 

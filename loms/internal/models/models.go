@@ -22,3 +22,8 @@ type ProductToReserve struct {
 	WarehouseID uint64
 	Count       int32
 }
+
+type RestoringProducts struct {
+	WarehouseID uint64
+	Count       int32
+}

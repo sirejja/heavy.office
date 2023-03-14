@@ -10,6 +10,7 @@ import (
 
 func (o *OrderRepo) CancelOrder(ctx context.Context, orderID int64) (uint64, error) {
 	op := "OrderRepo.CancelOrder"
+	db := o.db.GetQueryEngine(ctx)
 
 	query := sq.Update(o.name).
 		Set("cancelled_at", sq.Expr("current_timestamp")).
@@ -22,9 +23,8 @@ func (o *OrderRepo) CancelOrder(ctx context.Context, orderID int64) (uint64, err
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	row := o.db.QueryRow(ctx, sql, args...)
 	var id uint64
-	if err = row.Scan(&id); err != nil {
+	if err = pgxscan.Get(ctx, db, &id, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
 			return 0, nil
 		}

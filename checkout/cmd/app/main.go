@@ -13,6 +13,7 @@ import (
 	"route256/checkout/internal/services/cart"
 	desc "route256/checkout/pkg/v1/api"
 	"route256/libs/interceptors"
+	"route256/libs/transactor"
 	"time"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -44,9 +45,10 @@ func main() {
 		log.Fatal("Unable to connect to database", err)
 	}
 	defer pool.Close()
+	transactionManager := transactor.New(pool)
 
-	cartsRepo := carts_repo.New(pool)
-	cartsProductsRepo := carts_products_repo.New(pool)
+	cartsRepo := carts_repo.New(transactionManager)
+	cartsProductsRepo := carts_products_repo.New(transactionManager)
 
 	lomsConn, err := grpc.Dial(cfg.Services.Loms.URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -70,7 +72,7 @@ func main() {
 		log.Fatal("failed to create productsClient", err)
 	}
 
-	cartProcessor := cart.New(lomsClient, productsClient, cartsRepo, cartsProductsRepo)
+	cartProcessor := cart.New(lomsClient, productsClient, cartsRepo, cartsProductsRepo, transactionManager)
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {

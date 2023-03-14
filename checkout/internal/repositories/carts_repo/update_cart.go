@@ -22,6 +22,7 @@ type UpdatCartValues struct {
 
 func (c *cartsRepo) UpdateCart(ctx context.Context, upd *UpdatCartValues, filter *UpdatCartFilter) (uint64, error) {
 	op := "cartsRepo.UpdateCart"
+	db := c.db.GetQueryEngine(ctx)
 
 	if upd == nil {
 		return 0, fmt.Errorf("%s: %w", op, models.ErrNoDataProvided)
@@ -63,9 +64,8 @@ func (c *cartsRepo) UpdateCart(ctx context.Context, upd *UpdatCartValues, filter
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	row := c.db.QueryRow(ctx, sql, args...)
 	var id uint64
-	if err = row.Scan(&id); err != nil {
+	if err = pgxscan.Get(ctx, db, &id, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
 			return 0, nil
 		}

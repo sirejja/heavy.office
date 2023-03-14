@@ -2,9 +2,8 @@ package order_repo
 
 import (
 	"context"
+	"route256/libs/transactor"
 	"route256/loms/internal/repositories/schema"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type IOrderRepo interface {
@@ -16,13 +15,13 @@ type IOrderRepo interface {
 }
 
 type OrderRepo struct {
-	db   *pgxpool.Pool
+	db   *transactor.TransactionManager
 	name string
 }
 
 var _ IOrderRepo = (*OrderRepo)(nil)
 
-func New(pool *pgxpool.Pool) *OrderRepo {
+func New(pool *transactor.TransactionManager) *OrderRepo {
 	return &OrderRepo{
 		db:   pool,
 		name: "orders",

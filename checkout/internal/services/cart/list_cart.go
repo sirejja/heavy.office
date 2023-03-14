@@ -10,15 +10,13 @@ import (
 func (c *Cart) ListCart(ctx context.Context, user int64) ([]models.CartProduct, uint32, error) {
 	op := "Cart.ListCart"
 
-	var totalPrice uint32
-
 	cartProducts, err := c.cartsProductsRepo.GetCartsProducts(ctx, &carts_products_repo.GetCartProductsFilter{UserID: user, IsDeleted: false})
 	if err != nil {
 		return nil, 0, fmt.Errorf("%s: %w", op, err)
 	}
 
 	resultCartProducts := make([]models.CartProduct, 0)
-
+	var totalPrice uint32
 	for _, cartProduct := range cartProducts {
 		product, err := c.productsClient.GetProduct(ctx, (*cartProduct).SKU)
 		if err != nil {

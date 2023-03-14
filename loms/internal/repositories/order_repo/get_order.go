@@ -18,6 +18,7 @@ type GetOrderFilter struct {
 
 func (o *OrderRepo) GetOrder(ctx context.Context, filter *GetOrderFilter) (*schema.OrdersSchema, error) {
 	op := "OrderRepo.GetOrder"
+	db := o.db.GetQueryEngine(ctx)
 
 	if filter == nil {
 		return nil, fmt.Errorf("%s: %w", op, models.ErrNoFiltersProvided)
@@ -39,7 +40,7 @@ func (o *OrderRepo) GetOrder(ctx context.Context, filter *GetOrderFilter) (*sche
 	}
 
 	var orderRow schema.OrdersSchema
-	if err = pgxscan.Get(ctx, o.db, &orderRow, sql, args...); err != nil {
+	if err = pgxscan.Get(ctx, db, &orderRow, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, nil
 		}

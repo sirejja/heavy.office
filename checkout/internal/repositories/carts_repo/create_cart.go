@@ -6,6 +6,7 @@ import (
 	"route256/checkout/internal/models"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/georgysavva/scany/pgxscan"
 )
 
 type CreateCartIns struct {
@@ -14,6 +15,7 @@ type CreateCartIns struct {
 
 func (c *cartsRepo) CreateCart(ctx context.Context, ins *CreateCartIns) (uint64, error) {
 	op := "cartsRepo.CreateCart"
+	db := c.db.GetQueryEngine(ctx)
 
 	if ins == nil {
 		return 0, fmt.Errorf("%s: %w", op, models.ErrNoDataProvided)
@@ -30,8 +32,10 @@ func (c *cartsRepo) CreateCart(ctx context.Context, ins *CreateCartIns) (uint64,
 	}
 
 	var id uint64
-
-	if err = c.db.QueryRow(ctx, sql, args...).Scan(&id); err != nil {
+	if err = pgxscan.Get(ctx, db, &id, sql, args...); err != nil {
+		if pgxscan.NotFound(err) {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 

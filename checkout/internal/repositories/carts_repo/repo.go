@@ -3,8 +3,7 @@ package carts_repo
 import (
 	"context"
 	"route256/checkout/internal/repositories/schema"
-
-	"github.com/jackc/pgx/v4/pgxpool"
+	"route256/libs/transactor"
 )
 
 type ICartsRepo interface {
@@ -16,11 +15,11 @@ type ICartsRepo interface {
 var _ ICartsRepo = (*cartsRepo)(nil)
 
 type cartsRepo struct {
-	db   *pgxpool.Pool
+	db   *transactor.TransactionManager
 	name string
 }
 
-func New(pool *pgxpool.Pool) *cartsRepo {
+func New(pool *transactor.TransactionManager) *cartsRepo {
 	return &cartsRepo{
 		db:   pool,
 		name: "carts",

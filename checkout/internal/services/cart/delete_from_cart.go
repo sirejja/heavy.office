@@ -10,6 +10,23 @@ import (
 func (c *Cart) DeleteFromCart(ctx context.Context, user int64, sku uint32, count uint32) error {
 	op := "Cart.DeleteFromCart"
 
+	err := c.txManager.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
+		err := c.processProductDeletionFromCart(ctxTX, user, sku, count)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (c *Cart) processProductDeletionFromCart(ctx context.Context, user int64, sku uint32, count uint32) error {
+	op := "Cart.processProductDeletionFromCart"
+
 	cartProducts, err := c.cartsProductsRepo.GetCartsProducts(ctx,
 		&carts_products_repo.GetCartProductsFilter{SKU: sku, UserID: user, IsDeleted: false})
 	if err != nil {

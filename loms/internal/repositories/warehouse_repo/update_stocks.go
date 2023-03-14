@@ -20,6 +20,7 @@ type UpdateStocksData struct {
 
 func (w *warehouseRepo) UpdateStocks(ctx context.Context, filter *UpdateStocksFilter, data *UpdateStocksData) (uint64, error) {
 	op := "WarehouseRepo.UpdateStocks"
+	db := w.db.GetQueryEngine(ctx)
 
 	if filter == nil {
 		return 0, fmt.Errorf("%s: %w", op, models.ErrNoFiltersProvided)
@@ -49,10 +50,8 @@ func (w *warehouseRepo) UpdateStocks(ctx context.Context, filter *UpdateStocksFi
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	row := w.db.QueryRow(ctx, sql, args...)
-
 	var id uint64
-	if err = row.Scan(&id); err != nil {
+	if err = pgxscan.Get(ctx, db, &id, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
 			return 0, nil
 		}

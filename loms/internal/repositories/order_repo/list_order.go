@@ -16,6 +16,8 @@ type ListOrderFilter struct {
 
 func (o *OrderRepo) ListOrder(ctx context.Context, filter *ListOrderFilter) ([]*schema.WarehouseOrdersList, error) {
 	op := "OrderRepo.ListOrder"
+	db := o.db.GetQueryEngine(ctx)
+
 	if filter == nil {
 		return nil, fmt.Errorf("%s: %w", op, models.ErrNoFiltersProvided)
 	}
@@ -36,11 +38,19 @@ func (o *OrderRepo) ListOrder(ctx context.Context, filter *ListOrderFilter) ([]*
 	}
 
 	var listOrder []*schema.WarehouseOrdersList
-	if err = pgxscan.Select(ctx, o.db, &listOrder, sql, args...); err != nil {
+	if err = pgxscan.Select(ctx, db, &listOrder, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return listOrder, nil
+}
+
+func FromSchemaToRestoringProducts(productsList []*schema.WarehouseOrdersList) []models.RestoringProducts {
+	result := make([]models.RestoringProducts, 0, len(productsList))
+	for _, product := range productsList {
+		result = append(result, models.RestoringProducts{WarehouseID: product.WarehouseID, Count: int32(product.Count)})
+	}
+	return result
 }

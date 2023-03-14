@@ -23,8 +23,6 @@ func (o *Order) ListOrder(ctx context.Context, orderID int64) (*models.Order, er
 		return nil, fmt.Errorf("%s: %w", op, models.ErrNotFound)
 	}
 
-	// TODO switch to db
-	// sum count of different warehouse_ids but same sku
 	SKUCount := make(map[uint64]uint32)
 	for _, product := range listOrder {
 		SKUCount[product.SKU] += product.Count

@@ -18,6 +18,7 @@ type GetCartFilter struct {
 
 func (c *cartsRepo) GetCarts(ctx context.Context, filter *GetCartFilter) ([]*schema.CartSchema, error) {
 	op := "cartsRepo.GetCarts"
+	db := c.db.GetQueryEngine(ctx)
 
 	if filter == nil {
 		return nil, fmt.Errorf("%s: %w", op, models.ErrNoFiltersProvided)
@@ -44,9 +45,9 @@ func (c *cartsRepo) GetCarts(ctx context.Context, filter *GetCartFilter) ([]*sch
 	}
 
 	var cartsRows []*schema.CartSchema
-	if err = pgxscan.Select(ctx, c.db, &cartsRows, sql, args...); err != nil {
+	if err = pgxscan.Select(ctx, db, &cartsRows, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
-			return []*schema.CartSchema{}, nil
+			return nil, nil
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

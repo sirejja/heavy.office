@@ -8,16 +8,16 @@ import (
 	"go.uber.org/multierr"
 )
 
-type QueryEngine interface {
+type IQueryEngine interface {
 	Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error)
 	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 }
 
-type QueryEngineProvider interface {
-	GetQueryEngine(ctx context.Context) QueryEngine
+type IQueryEngineProvider interface {
+	GetQueryEngine(ctx context.Context) IQueryEngine
 }
 type ITransactor interface {
-	RunRepeatableRead(ctx context.Context, fx func(ctxTX context.Context) error)
+	RunRepeatableRead(ctx context.Context, fx func(ctxTX context.Context) error) error
 }
 
 type transactKey string
@@ -29,7 +29,7 @@ type TransactionManager struct {
 	ctxKey transactKey
 }
 
-func NewTransactionManager(pool *pgxpool.Pool) *TransactionManager {
+func New(pool *pgxpool.Pool) *TransactionManager {
 	return &TransactionManager{
 		pool:   pool,
 		ctxKey: ctxTransactKey,
@@ -45,19 +45,19 @@ func (tm *TransactionManager) RunRepeatableRead(ctx context.Context, fx func(ctx
 		return err
 	}
 
-	if err := fx(context.WithValue(ctx, tm.ctxKey, tx)); err != nil {
+	if err = fx(context.WithValue(ctx, tm.ctxKey, tx)); err != nil {
 		return multierr.Combine(err, tx.Rollback(ctx))
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return multierr.Combine(err, tx.Rollback(ctx))
 	}
 
 	return nil
 }
 
-func (tm *TransactionManager) GetQueryEngine(ctx context.Context) QueryEngine {
-	tx, ok := ctx.Value(tm.ctxKey).(QueryEngine)
+func (tm *TransactionManager) GetQueryEngine(ctx context.Context) IQueryEngine {
+	tx, ok := ctx.Value(tm.ctxKey).(IQueryEngine)
 	if ok && tx != nil {
 		return tx
 	}

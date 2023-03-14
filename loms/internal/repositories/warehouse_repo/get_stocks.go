@@ -17,6 +17,7 @@ type GetStocksFilter struct {
 
 func (w *warehouseRepo) GetStocks(ctx context.Context, filter *GetStocksFilter) ([]*schema.Stock, error) {
 	op := "WarehouseRepo.GetStocks"
+	db := w.db.GetQueryEngine(ctx)
 
 	if filter == nil {
 		return nil, fmt.Errorf("%s: %w", op, models.ErrNoFiltersProvided)
@@ -40,7 +41,7 @@ func (w *warehouseRepo) GetStocks(ctx context.Context, filter *GetStocksFilter) 
 	}
 
 	var stocks []*schema.Stock
-	if err = pgxscan.Select(ctx, w.db, &stocks, sql, args...); err != nil {
+	if err = pgxscan.Select(ctx, db, &stocks, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, nil
 		}

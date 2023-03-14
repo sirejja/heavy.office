@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"route256/libs/interceptors"
+	"route256/libs/transactor"
 	v1 "route256/loms/internal/api/v1"
 	"route256/loms/internal/config"
 	"route256/loms/internal/repositories/order_repo"
@@ -43,13 +44,14 @@ func main() {
 		log.Fatal("Unable to connect to database", err)
 	}
 	defer pool.Close()
+	transactionManager := transactor.New(pool)
 
-	warehouseRepo := warehouse_repo.New(pool)
-	ordersRepo := order_repo.New(pool)
-	warehouseOrdersRepo := warehouse_orders_repo.New(pool)
+	warehouseRepo := warehouse_repo.New(transactionManager)
+	ordersRepo := order_repo.New(transactionManager)
+	warehouseOrdersRepo := warehouse_orders_repo.New(transactionManager)
 
-	ordersProcessor := orders.New(ordersRepo, warehouseRepo, warehouseOrdersRepo)
-	warehouseProcessor := warehouse.New(warehouseRepo)
+	ordersProcessor := orders.New(ordersRepo, warehouseRepo, warehouseOrdersRepo, transactionManager)
+	warehouseProcessor := warehouse.New(warehouseRepo, transactionManager)
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {

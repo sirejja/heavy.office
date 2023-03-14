@@ -7,6 +7,7 @@ import (
 	"route256/checkout/internal/models"
 	"route256/checkout/internal/repositories/carts_products_repo"
 	"route256/checkout/internal/repositories/carts_repo"
+	"route256/libs/transactor"
 )
 
 type ICartProcessor interface {
@@ -21,6 +22,7 @@ type Cart struct {
 	productsClient    products.IProductServiceClient
 	cartsRepo         carts_repo.ICartsRepo
 	cartsProductsRepo carts_products_repo.ICartsProductsRepo
+	txManager         transactor.ITransactor
 }
 
 func New(
@@ -28,11 +30,13 @@ func New(
 	productsClient products.IProductServiceClient,
 	cartsRepo carts_repo.ICartsRepo,
 	cartsProductsRepo carts_products_repo.ICartsProductsRepo,
+	txManager *transactor.TransactionManager,
 ) *Cart {
 	return &Cart{
 		lomsClient:        lomsClient,
 		productsClient:    productsClient,
 		cartsRepo:         cartsRepo,
 		cartsProductsRepo: cartsProductsRepo,
+		txManager:         txManager,
 	}
 }

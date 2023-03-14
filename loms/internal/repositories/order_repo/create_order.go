@@ -6,6 +6,7 @@ import (
 	"route256/loms/internal/models"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/georgysavva/scany/pgxscan"
 )
 
 type CreateOrderIns struct {
@@ -15,6 +16,7 @@ type CreateOrderIns struct {
 
 func (o *OrderRepo) CreateOrder(ctx context.Context, ins *CreateOrderIns) (uint64, error) {
 	op := "OrderRepo.CreateOrder"
+	db := o.db.GetQueryEngine(ctx)
 
 	if ins == nil {
 		return 0, fmt.Errorf("%s: %w", op, models.ErrNoDataProvided)
@@ -31,8 +33,10 @@ func (o *OrderRepo) CreateOrder(ctx context.Context, ins *CreateOrderIns) (uint6
 	}
 
 	var id uint64
-
-	if err = o.db.QueryRow(ctx, sql, args...).Scan(&id); err != nil {
+	if err = pgxscan.Get(ctx, db, &id, sql, args...); err != nil {
+		if pgxscan.NotFound(err) {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 

@@ -2,8 +2,7 @@ package warehouse_orders_repo
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v4/pgxpool"
+	"route256/libs/transactor"
 )
 
 type IWarehouseOrdersRepo interface {
@@ -13,11 +12,11 @@ type IWarehouseOrdersRepo interface {
 var _ IWarehouseOrdersRepo = (*warehouseOrdersRepo)(nil)
 
 type warehouseOrdersRepo struct {
-	db   *pgxpool.Pool
+	db   *transactor.TransactionManager
 	name string
 }
 
-func New(pool *pgxpool.Pool) *warehouseOrdersRepo {
+func New(pool *transactor.TransactionManager) *warehouseOrdersRepo {
 	return &warehouseOrdersRepo{
 		db:   pool,
 		name: "warehouse_orders",
