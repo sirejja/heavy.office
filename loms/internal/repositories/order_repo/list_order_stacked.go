@@ -10,18 +10,20 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 )
 
-func (o *OrderRepo) ListOrder(ctx context.Context, orderID uint64) ([]models.ListOrder, error) {
-	op := "OrderRepo.ListOrder"
+func (o *OrderRepo) ListOrderStacked(ctx context.Context, orderID uint64) ([]models.StackedOrder, error) {
+	op := "OrderRepo.ListOrderStacked"
 	db := o.db.GetQueryEngine(ctx)
 
 	query := sq.
-		Select("wo.id, w.id warehouse_id, wo.cnt, o.user_id, o.status, w.sku").
+		Select("sum(wo.cnt) as cnt ,w.sku").
 		From(fmt.Sprintf("%s o", o.name)).
 		LeftJoin("warehouse_orders wo on wo.order_id=o.id").
 		LeftJoin("warehouse w on w.id=wo.warehouse_id").
 		Where(sq.Eq{"o.id": orderID}).
 		Where(sq.Eq{"o.cancelled_at": nil}).
 		Where(sq.Eq{"wo.deleted_at": nil}).
+		Where(sq.Eq{"w.deleted_at": nil}).
+		GroupBy("w.sku").
 		PlaceholderFormat(sq.Dollar)
 
 	sql, args, err := query.ToSql()
@@ -29,7 +31,7 @@ func (o *OrderRepo) ListOrder(ctx context.Context, orderID uint64) ([]models.Lis
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	var listOrder []*schema.WarehouseOrdersListSchema
+	var listOrder []*schema.ListOrderStackedSchema
 	if err = pgxscan.Select(ctx, db, &listOrder, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, nil
@@ -37,9 +39,9 @@ func (o *OrderRepo) ListOrder(ctx context.Context, orderID uint64) ([]models.Lis
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	result := make([]models.ListOrder, 0, len(listOrder))
+	result := make([]models.StackedOrder, 0, len(listOrder))
 	for _, product := range listOrder {
-		result = append(result, models.ListOrder{WarehouseID: product.WarehouseID, Count: int32(product.Count), SKU: product.SKU})
+		result = append(result, models.StackedOrder{Count: int32(product.Count), SKU: product.SKU})
 	}
 
 	return result, nil

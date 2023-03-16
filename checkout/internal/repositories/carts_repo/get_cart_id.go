@@ -1,4 +1,4 @@
-package order_repo
+package carts_repo
 
 import (
 	"context"
@@ -8,14 +8,14 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 )
 
-func (o *OrderRepo) PayedOrder(ctx context.Context, orderID int64) (uint64, error) {
-	op := "OrderRepo.PayedOrder"
-	db := o.db.GetQueryEngine(ctx)
+func (c *cartsRepo) GetCartID(ctx context.Context, userID int64) (uint64, error) {
+	op := "cartsRepo.GetCartID"
+	db := c.db.GetQueryEngine(ctx)
 
-	query := sq.Update(o.name).
-		Set("updated_at", sq.Expr("current_timestamp")).
-		Set("status", "payed").
-		Where(sq.Eq{"id": orderID}).
+	query := sq.Select("id").
+		From(c.name).
+		Where(sq.Eq{"user_id": userID}).
+		Where(sq.Eq{"deleted_at": nil}).
 		PlaceholderFormat(sq.Dollar)
 
 	sql, args, err := query.ToSql()

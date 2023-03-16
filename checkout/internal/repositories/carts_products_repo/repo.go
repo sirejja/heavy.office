@@ -2,15 +2,17 @@ package carts_products_repo
 
 import (
 	"context"
-	"route256/checkout/internal/repositories/schema"
+	"route256/checkout/internal/models"
 	"route256/libs/transactor"
 )
 
 type ICartsProductsRepo interface {
-	AddProductToCart(ctx context.Context, ins *AddProductToCartInsert) (uint64, error)
-	GetCartsProducts(ctx context.Context, filter *GetCartProductsFilter) ([]*schema.CartProductsSchema, error)
-	DeleteProductFromCart(ctx context.Context, filter *DeleteProductFromCartFilter) (uint64, error)
-	UpdateCartProduct(ctx context.Context, upd *UpdateProductCartValues, filter *UpdateProductCartFilter) (uint64, error)
+	GetCartsProducts(ctx context.Context, userID int64) ([]models.Item, error)
+	GetCartProduct(ctx context.Context, sku uint32, userID int64) (*models.ItemCart, error)
+	GetCartProductCount(ctx context.Context, SKU uint32) (uint32, error)
+	AddProductToCart(ctx context.Context, CartID uint64, sku uint32, Count uint32) (uint64, error)
+	UpdateCartProduct(ctx context.Context, sku uint64, count uint32, cartID uint32) (uint64, error)
+	DeleteProductFromCart(ctx context.Context, id uint64) (uint64, error)
 }
 
 var _ ICartsProductsRepo = (*cartsProductsRepo)(nil)

@@ -17,8 +17,7 @@ CREATE TABLE IF NOT EXISTS orders (
       user_id bigint NOT NULL,
       status order_status NOT NULL,
       created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      cancelled_at timestamptz
+      updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS warehouse_orders (

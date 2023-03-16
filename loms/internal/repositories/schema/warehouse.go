@@ -14,7 +14,7 @@ type WarehouseSchema struct {
 	DeletedAt sql.NullTime `db:"deleted_at"`
 }
 
-type Stock struct {
+type StocksSchema struct {
 	ID    uint64 `db:"id"`
 	Count uint32 `db:"stock"`
 	SKU   uint64 `db:"sku"`

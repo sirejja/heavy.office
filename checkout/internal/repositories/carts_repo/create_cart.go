@@ -9,20 +9,18 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 )
 
-type CreateCartIns struct {
-	UserID int64
-}
-
-func (c *cartsRepo) CreateCart(ctx context.Context, ins *CreateCartIns) (uint64, error) {
+func (c *cartsRepo) CreateCart(ctx context.Context, UserID int64) (uint64, error) {
 	op := "cartsRepo.CreateCart"
 	db := c.db.GetQueryEngine(ctx)
 
-	if ins == nil {
+	if UserID == 0 {
 		return 0, fmt.Errorf("%s: %w", op, models.ErrNoDataProvided)
 	}
 
-	query := sq.Insert(c.name).Columns("user_id").
-		Values(ins.UserID).Suffix("RETURNING \"id\"").
+	query := sq.Insert(c.name).
+		Columns("user_id").
+		Values(UserID).
+		Suffix("RETURNING \"id\"").
 		PlaceholderFormat(sq.Dollar)
 
 	sql, args, err := query.ToSql()

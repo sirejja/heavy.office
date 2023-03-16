@@ -3,12 +3,12 @@ package warehouse_repo
 import (
 	"context"
 	"route256/libs/transactor"
-	"route256/loms/internal/repositories/schema"
+	"route256/loms/internal/models"
 )
 
 type IWarehouseRepo interface {
-	GetStocks(ctx context.Context, filter *GetStocksFilter) ([]*schema.Stock, error)
-	UpdateStocks(ctx context.Context, filter *UpdateStocksFilter, data *UpdateStocksData) (uint64, error)
+	GetStocks(ctx context.Context, sku uint32) ([]models.Stock, error)
+	ChangeStocks(ctx context.Context, warehouseID uint64, StockDiff int32) (uint64, error)
 }
 
 var _ IWarehouseRepo = (*warehouseRepo)(nil)

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"route256/checkout/internal/models"
-	"route256/checkout/internal/repositories/carts_products_repo"
-	"route256/checkout/internal/repositories/carts_repo"
 )
 
 func (c *Cart) AddToCart(ctx context.Context, user int64, sku uint32, count uint32) error {
@@ -16,47 +14,44 @@ func (c *Cart) AddToCart(ctx context.Context, user int64, sku uint32, count uint
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	cart, err := c.cartsRepo.GetCarts(ctx, &carts_repo.GetCartFilter{UserId: user, IsDeleted: false})
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	if len(cart) > 1 {
-		return fmt.Errorf("%s: %w", op, models.ErrUserHasMoreThanOneCart)
-	}
+	err = c.txManager.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
 
-	var cartID uint64
-	if len(cart) == 0 {
-		cartID, err = c.cartsRepo.CreateCart(ctx, &carts_repo.CreateCartIns{UserID: user})
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-	} else {
-		cartID = (*cart[0]).Id
-		cartsProducts, err := c.cartsProductsRepo.GetCartsProducts(ctx,
-			&carts_products_repo.GetCartProductsFilter{SKU: sku, IsDeleted: false})
+		cartID, err := c.cartsRepo.GetCartID(ctxTX, user)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 
-		if len(cartsProducts) == 1 {
-			increasedCount := (*cartsProducts[0]).Count + count
-			_, err = c.cartsProductsRepo.UpdateCartProduct(ctx,
-				&carts_products_repo.UpdateProductCartValues{SKU: sku, Count: increasedCount},
-				&carts_products_repo.UpdateProductCartFilter{CartID: cartID, SKU: sku, IsDeleted: false})
+		if cartID == 0 {
+			cartID, err = c.cartsRepo.CreateCart(ctxTX, user)
 			if err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
-			return nil
+		} else {
+			productCount, err := c.cartsProductsRepo.GetCartProductCount(ctxTX, sku)
+			if err != nil {
+				return fmt.Errorf("%s: %w", op, err)
+			}
+			if productCount != 0 {
+				increasedCount := productCount + count
+				_, err = c.cartsProductsRepo.UpdateCartProduct(ctxTX, uint64(sku), increasedCount, uint32(cartID))
+				if err != nil {
+					return fmt.Errorf("%s: %w", op, err)
+				}
+				return nil
+			}
 		}
-	}
 
-	id, err := c.cartsProductsRepo.AddProductToCart(ctx,
-		&carts_products_repo.AddProductToCartInsert{CartID: cartID, SKU: sku, Count: count})
+		id, err := c.cartsProductsRepo.AddProductToCart(ctxTX, cartID, sku, count)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		if id == 0 {
+			return fmt.Errorf("%s: %w", op, models.ErrInsertFailed)
+		}
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
-	}
-	if id == 0 {
-		return fmt.Errorf("%s: %w", op, models.ErrInsertFailed)
 	}
 
 	return nil

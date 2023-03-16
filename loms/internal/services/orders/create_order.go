@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"route256/loms/internal/models"
-	"route256/loms/internal/repositories/order_repo"
-	"route256/loms/internal/repositories/warehouse_orders_repo"
-	"route256/loms/internal/repositories/warehouse_repo"
 )
 
 func (o *Order) CreateOrder(ctx context.Context, user int64, items []models.Item) (int64, error) {
@@ -30,14 +27,14 @@ func (o *Order) CreateOrder(ctx context.Context, user int64, items []models.Item
 }
 
 func (o *Order) processOrderCreation(ctx context.Context, user int64, items []models.Item) (int64, error) {
-	op := "Order.CreateOrder"
+	op := "Order.processOrderCreation"
 
 	productsToReserve, err := o.checkProductsForOrderCreation(ctx, items)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	orderID, err := o.ordersRepo.CreateOrder(ctx, &order_repo.CreateOrderIns{UserID: user, Status: "new"})
+	orderID, err := o.ordersRepo.CreateOrder(ctx, user, models.OrderStatusNew.ToString())
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
@@ -47,8 +44,12 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	err = o.updateStockAfterReserve(ctx, productsToReserve)
+	err = o.changeStockAfterReserve(ctx, productsToReserve)
 	if err != nil {
+		_, err = o.ordersRepo.UpdateOrderStatus(ctx, int64(orderID), models.OrderStatusFailed)
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -60,7 +61,7 @@ func (o *Order) checkProductsForOrderCreation(ctx context.Context, items []model
 
 	productsToReserve := make([]models.ProductToReserve, 0)
 	for _, item := range items {
-		stocks, err := o.warehouseRepo.GetStocks(ctx, &warehouse_repo.GetStocksFilter{SKU: item.SKU, IsDeleted: false})
+		stocks, err := o.warehouseRepo.GetStocks(ctx, item.SKU)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
@@ -73,33 +74,25 @@ func (o *Order) checkProductsForOrderCreation(ctx context.Context, items []model
 				countToReserve -= int32(stock.Count)
 				countReserved = int32(stock.Count)
 			} else if cnt >= countToReserve {
-				// К резерву часть товара, идем к следующей лоту
+				// К резерву часть стока
 				countToReserve -= int32(item.Count)
 				countReserved = int32(item.Count)
-			} else {
-				// Пустой сток
-				continue
 			}
-			productsToReserve = append(productsToReserve, models.ProductToReserve{WarehouseID: stock.ID, Count: countReserved})
+			productsToReserve = append(productsToReserve, models.ProductToReserve{WarehouseID: stock.WarehouseID, Count: countReserved})
 		}
 		if countToReserve != 0 {
 			return nil, models.ErrInsufficientStocks
 		}
 	}
+
 	return productsToReserve, nil
 }
 
 func (o *Order) reserveOrderProducts(ctx context.Context, productsToReserve []models.ProductToReserve, orderID uint64) error {
-	op := "Order.checkProductsForOrderCreation"
+	op := "Order.reserveOrderProducts"
 
 	for _, product := range productsToReserve {
-		_, err := o.warehouseOrdersRepo.FillOrderProducts(
-			ctx,
-			&warehouse_orders_repo.FillOrderProductsIns{
-				OrderID:     orderID,
-				WarehouseID: product.WarehouseID,
-				Count:       uint32(product.Count),
-			})
+		_, err := o.warehouseOrdersRepo.FillOrderProducts(ctx, orderID, product.WarehouseID, uint32(product.Count))
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -108,18 +101,15 @@ func (o *Order) reserveOrderProducts(ctx context.Context, productsToReserve []mo
 	return nil
 }
 
-func (o *Order) updateStockAfterReserve(ctx context.Context, productsToReserve []models.ProductToReserve) error {
-	op := "Order.checkProductsForOrderCreation"
+func (o *Order) changeStockAfterReserve(ctx context.Context, productsToReserve []models.ProductToReserve) error {
+	op := "Order.changeStockAfterReserve"
 
 	for _, product := range productsToReserve {
-		_, err := o.warehouseRepo.UpdateStocks(
-			ctx,
-			&warehouse_repo.UpdateStocksFilter{ID: product.WarehouseID},
-			&warehouse_repo.UpdateStocksData{StockDiff: -product.Count},
-		)
+		_, err := o.warehouseRepo.ChangeStocks(ctx, product.WarehouseID, -product.Count)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
+
 	return nil
 }

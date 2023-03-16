@@ -23,7 +23,18 @@ type ProductToReserve struct {
 	Count       int32
 }
 
-type RestoringProducts struct {
+type ListOrder struct {
 	WarehouseID uint64
 	Count       int32
+	SKU         uint32
+}
+
+type StackedOrder struct {
+	Count int32
+	SKU   uint32
+}
+
+type OrderDetails struct {
+	UserID int64
+	Status string
 }

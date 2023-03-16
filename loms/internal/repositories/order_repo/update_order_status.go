@@ -1,23 +1,22 @@
-package carts_products_repo
+package order_repo
 
 import (
 	"context"
 	"fmt"
+	"route256/loms/internal/models"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
 )
 
-func (c *cartsProductsRepo) UpdateCartProduct(ctx context.Context, sku uint64, count uint32, cartID uint32) (uint64, error) {
-	op := "cartsProductsRepo.UpdateProductCart"
-	db := c.db.GetQueryEngine(ctx)
+func (o *OrderRepo) UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) (uint64, error) {
+	op := "OrderRepo.CancelOrder"
+	db := o.db.GetQueryEngine(ctx)
 
-	query := sq.Update(c.name).
-		Set("cnt", count).
+	query := sq.Update(o.name).
+		Set("status", status.ToString()).
 		Set("updated_at", sq.Expr("current_timestamp")).
-		Where(sq.Eq{"cart_id": cartID}).
-		Where(sq.Eq{"sku": sku}).
-		Where(sq.Eq{"deleted_at": nil}).
+		Where(sq.Eq{"id": orderID}).
 		Suffix("RETURNING id").
 		PlaceholderFormat(sq.Dollar)
 

@@ -10,37 +10,23 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 )
 
-type GetStocksFilter struct {
-	SKU       uint32
-	IsDeleted bool
-}
-
-func (w *warehouseRepo) GetStocks(ctx context.Context, filter *GetStocksFilter) ([]*schema.Stock, error) {
+func (w *warehouseRepo) GetStocks(ctx context.Context, sku uint32) ([]models.Stock, error) {
 	op := "WarehouseRepo.GetStocks"
 	db := w.db.GetQueryEngine(ctx)
 
-	if filter == nil {
-		return nil, fmt.Errorf("%s: %w", op, models.ErrNoFiltersProvided)
-	}
-
 	query := sq.Select("id, stock, sku").
-		From(w.name).PlaceholderFormat(sq.Dollar)
-
-	if filter.SKU != 0 {
-		query = query.Where(sq.Eq{"sku": filter.SKU})
-	}
-	if !filter.IsDeleted {
-		query = query.Where(sq.Eq{"deleted_at": nil})
-	} else {
-		query = query.Where(sq.Expr("deleted_at is not null"))
-	}
+		From(w.name).
+		Where(sq.Eq{"deleted_at": nil}).
+		Where(sq.Eq{"sku": sku}).
+		Where(sq.Gt{"stock": 0}).
+		PlaceholderFormat(sq.Dollar)
 
 	sql, args, err := query.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	var stocks []*schema.Stock
+	var stocks []*schema.StocksSchema
 	if err = pgxscan.Select(ctx, db, &stocks, sql, args...); err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, nil
@@ -48,5 +34,10 @@ func (w *warehouseRepo) GetStocks(ctx context.Context, filter *GetStocksFilter) 
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return stocks, nil
+	warehouseStocks := make([]models.Stock, 0)
+	for _, stock := range stocks {
+		warehouseStocks = append(warehouseStocks, models.Stock{WarehouseID: stock.ID, Count: stock.Count})
+	}
+
+	return warehouseStocks, nil
 }

@@ -3,15 +3,15 @@ package order_repo
 import (
 	"context"
 	"route256/libs/transactor"
-	"route256/loms/internal/repositories/schema"
+	"route256/loms/internal/models"
 )
 
 type IOrderRepo interface {
-	GetOrder(ctx context.Context, filter *GetOrderFilter) (*schema.OrdersSchema, error)
-	PayedOrder(ctx context.Context, orderID int64) (uint64, error)
-	CancelOrder(ctx context.Context, orderID int64) (uint64, error)
-	CreateOrder(ctx context.Context, ins *CreateOrderIns) (uint64, error)
-	ListOrder(ctx context.Context, filter *ListOrderFilter) ([]*schema.WarehouseOrdersList, error)
+	GetOrderDetails(ctx context.Context, orderID uint64) (*models.OrderDetails, error)
+	UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) (uint64, error)
+	CreateOrder(ctx context.Context, userID int64, status string) (uint64, error)
+	ListOrder(ctx context.Context, orderID uint64) ([]models.ListOrder, error)
+	ListOrderStacked(ctx context.Context, orderID uint64) ([]models.StackedOrder, error)
 }
 
 type OrderRepo struct {

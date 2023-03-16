@@ -6,7 +6,7 @@ import (
 )
 
 type IWarehouseOrdersRepo interface {
-	FillOrderProducts(ctx context.Context, ins *FillOrderProductsIns) (uint64, error)
+	FillOrderProducts(ctx context.Context, orderID uint64, warehouseID uint64, count uint32) (uint64, error)
 }
 
 var _ IWarehouseOrdersRepo = (*warehouseOrdersRepo)(nil)

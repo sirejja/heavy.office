@@ -3,30 +3,22 @@ package warehouse_orders_repo
 import (
 	"context"
 	"fmt"
-	"route256/loms/internal/models"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
 )
 
 type FillOrderProductsIns struct {
-	OrderID     uint64
-	WarehouseID uint64
-	Count       uint32
 }
 
-func (w *warehouseOrdersRepo) FillOrderProducts(ctx context.Context, ins *FillOrderProductsIns) (uint64, error) {
+func (w *warehouseOrdersRepo) FillOrderProducts(ctx context.Context, orderID uint64, warehouseID uint64, count uint32) (uint64, error) {
 	op := "WarehouseOrdersRepo.FillOrderProducts"
 	db := w.db.GetQueryEngine(ctx)
 
-	if ins == nil {
-		return 0, fmt.Errorf("%s: %w", op, models.ErrNoDataProvided)
-	}
-
 	query := sq.Insert(w.name).
 		Columns("order_id, warehouse_id, cnt").
-		Values(ins.OrderID, ins.WarehouseID, ins.Count).
-		Suffix("RETURNING \"id\"").
+		Values(orderID, warehouseID, count).
+		Suffix("RETURNING id").
 		PlaceholderFormat(sq.Dollar)
 
 	sql, args, err := query.ToSql()

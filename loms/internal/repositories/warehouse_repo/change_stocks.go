@@ -1,4 +1,4 @@
-package carts_products_repo
+package warehouse_repo
 
 import (
 	"context"
@@ -8,16 +8,19 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 )
 
-func (c *cartsProductsRepo) UpdateCartProduct(ctx context.Context, sku uint64, count uint32, cartID uint32) (uint64, error) {
-	op := "cartsProductsRepo.UpdateProductCart"
-	db := c.db.GetQueryEngine(ctx)
+type UpdateStocksFilter struct {
+	SKU uint64
+	ID  uint64
+}
 
-	query := sq.Update(c.name).
-		Set("cnt", count).
+func (w *warehouseRepo) ChangeStocks(ctx context.Context, warehouseID uint64, stockDiff int32) (uint64, error) {
+	op := "WarehouseRepo.ChangeStocks"
+	db := w.db.GetQueryEngine(ctx)
+
+	query := sq.Update(w.name).
 		Set("updated_at", sq.Expr("current_timestamp")).
-		Where(sq.Eq{"cart_id": cartID}).
-		Where(sq.Eq{"sku": sku}).
-		Where(sq.Eq{"deleted_at": nil}).
+		Set("stock", sq.Expr("stock + ?", stockDiff)).
+		Where(sq.Eq{"id": warehouseID}).
 		Suffix("RETURNING id").
 		PlaceholderFormat(sq.Dollar)
 
