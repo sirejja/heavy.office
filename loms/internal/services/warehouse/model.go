@@ -16,6 +16,8 @@ type Warehouse struct {
 	txManager     transactor.ITransactor
 }
 
+var _ IWarehouseService = (*Warehouse)(nil)
+
 func New(warehouseRepo warehouse_repo.IWarehouseRepo, txManager *transactor.TransactionManager) *Warehouse {
 	return &Warehouse{
 		warehouseRepo: warehouseRepo,

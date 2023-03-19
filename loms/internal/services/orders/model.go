@@ -23,6 +23,8 @@ type Order struct {
 	txManager           transactor.ITransactor
 }
 
+var _ IOrdersService = (*Order)(nil)
+
 func New(
 	ordersRepo order_repo.IOrderRepo,
 	warehouseRepo warehouse_repo.IWarehouseRepo,

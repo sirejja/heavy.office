@@ -18,6 +18,7 @@ import (
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
@@ -31,6 +32,7 @@ func main() {
 		log.Fatal("config init", err)
 	}
 
+	// db init
 	postgresConfig, err := pgxpool.ParseConfig(cfg.Storage.PostgresDSN)
 	if err != nil {
 		log.Fatal("can not parse postgres DSN", err)
@@ -50,6 +52,7 @@ func main() {
 	cartsRepo := carts_repo.New(transactionManager)
 	cartsProductsRepo := carts_products_repo.New(transactionManager)
 
+	// clients init
 	lomsConn, err := grpc.Dial(cfg.Services.Loms.URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("failed to connect to lomsClient", err)
@@ -67,18 +70,20 @@ func main() {
 	}
 	defer productsServiceConn.Close()
 
+	productsLimiter := rate.NewLimiter(rate.Every(time.Second/100), 10)
 	productsClient, err := products.New(productsServiceConn, cfg.Services.Products.Token)
 	if err != nil {
 		log.Fatal("failed to create productsClient", err)
 	}
 
-	cartProcessor := cart.New(lomsClient, productsClient, cartsRepo, cartsProductsRepo, transactionManager)
+	// business logic init
+	cartProcessor := cart.New(lomsClient, productsClient, cartsRepo, cartsProductsRepo, transactionManager, productsLimiter)
 
+	// sever init
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to connect to listen %v: %v", port, err)
 	}
-
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			grpcMiddleware.ChainUnaryServer(
@@ -86,9 +91,9 @@ func main() {
 			),
 		),
 	)
+
 	reflection.Register(server)
 	desc.RegisterCheckoutServer(server, v1.New(cartProcessor))
-
 	log.Println("grpc server listening at", port)
 	if err = server.Serve(lis); err != nil {
 		log.Fatal("failed to serve", err)

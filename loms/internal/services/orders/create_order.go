@@ -43,6 +43,14 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
+	_, err = o.ordersRepo.UpdateOrderStatus(ctx, int64(orderID), models.OrderStatusWaitPayment)
+	if err != nil {
+		_, errStatus := o.ordersRepo.UpdateOrderStatus(ctx, int64(orderID), models.OrderStatusFailed)
+		if errStatus != nil {
+			return 0, fmt.Errorf("%s: %w", op, errStatus)
+		}
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
 
 	err = o.changeStockAfterReserve(ctx, productsToReserve)
 	if err != nil {

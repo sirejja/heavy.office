@@ -8,6 +8,8 @@ import (
 	"route256/checkout/internal/repositories/carts_products_repo"
 	"route256/checkout/internal/repositories/carts_repo"
 	"route256/libs/transactor"
+
+	"golang.org/x/time/rate"
 )
 
 type ICartProcessor interface {
@@ -23,6 +25,7 @@ type Cart struct {
 	cartsRepo         carts_repo.ICartsRepo
 	cartsProductsRepo carts_products_repo.ICartsProductsRepo
 	txManager         transactor.ITransactor
+	productsLimiter   *rate.Limiter
 }
 
 func New(
@@ -31,6 +34,7 @@ func New(
 	cartsRepo carts_repo.ICartsRepo,
 	cartsProductsRepo carts_products_repo.ICartsProductsRepo,
 	txManager *transactor.TransactionManager,
+	productsLimiter *rate.Limiter,
 ) *Cart {
 	return &Cart{
 		lomsClient:        lomsClient,
@@ -38,5 +42,6 @@ func New(
 		cartsRepo:         cartsRepo,
 		cartsProductsRepo: cartsProductsRepo,
 		txManager:         txManager,
+		productsLimiter:   productsLimiter,
 	}
 }
