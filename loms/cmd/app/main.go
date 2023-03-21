@@ -1,18 +1,23 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"route256/libs/interceptors"
+	"route256/libs/transactor"
 	v1 "route256/loms/internal/api/v1"
 	"route256/loms/internal/config"
 	"route256/loms/internal/repositories/order_repo"
+	"route256/loms/internal/repositories/warehouse_orders_repo"
 	"route256/loms/internal/repositories/warehouse_repo"
 	"route256/loms/internal/services/orders"
 	"route256/loms/internal/services/warehouse"
 	desc "route256/loms/pkg/v1/api"
+	"time"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -25,11 +30,28 @@ func main() {
 		log.Fatal("config init", err)
 	}
 
-	warehouseRepo := warehouse_repo.New()
-	ordersRepo := order_repo.New()
+	postgresConfig, err := pgxpool.ParseConfig(cfg.Storage.PostgresDSN)
+	if err != nil {
+		log.Fatal("can not parse postgres DSN", err)
+	}
+	postgresConfig.MaxConnIdleTime = time.Minute
+	postgresConfig.MaxConnLifetime = time.Hour
+	postgresConfig.MinConns = 1
+	postgresConfig.MaxConns = 2
 
-	ordersProcessor := orders.New(ordersRepo, warehouseRepo)
-	warehouseProcessor := warehouse.New(warehouseRepo)
+	pool, err := pgxpool.ConnectConfig(context.Background(), postgresConfig)
+	if err != nil {
+		log.Fatal("Unable to connect to database", err)
+	}
+	defer pool.Close()
+	transactionManager := transactor.New(pool)
+
+	warehouseRepo := warehouse_repo.New(transactionManager)
+	ordersRepo := order_repo.New(transactionManager)
+	warehouseOrdersRepo := warehouse_orders_repo.New(transactionManager)
+
+	ordersProcessor := orders.New(ordersRepo, warehouseRepo, warehouseOrdersRepo, transactionManager)
+	warehouseProcessor := warehouse.New(warehouseRepo, transactionManager)
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {

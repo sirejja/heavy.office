@@ -9,9 +9,25 @@ import (
 func (o *Order) ListOrder(ctx context.Context, orderID int64) (*models.Order, error) {
 	op := "Order.ListOrder"
 
-	order, err := o.ordersRepo.ListOrder(orderID)
+	orderDetails, err := o.ordersRepo.GetOrderDetails(ctx, uint64(orderID))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	return order, nil
+
+	listOrder, err := o.ordersRepo.ListOrderStacked(ctx, uint64(orderID))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	if len(listOrder) == 0 {
+		return nil, fmt.Errorf("%s: %w", op, models.ErrNotFound)
+	}
+
+	var order models.Order
+	for _, product := range listOrder {
+		order.Items = append(order.Items, models.Item{Count: uint32(product.Count), SKU: product.SKU})
+	}
+	order.User = orderDetails.UserID
+	order.Status = orderDetails.Status
+
+	return &order, nil
 }

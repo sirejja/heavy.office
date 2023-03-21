@@ -31,7 +31,7 @@ func (s *Implementation) CreateOrder(ctx context.Context, req *desc.CreateOrderR
 
 	items := make([]models.Item, 0, len(req.GetItems()))
 	for _, item := range req.GetItems() {
-		items = append(items, models.Item{SKU: item.GetCount(), Count: item.GetCount()})
+		items = append(items, models.Item{SKU: item.GetSku(), Count: item.GetCount()})
 	}
 	orderID, err := s.orders.CreateOrder(ctx, req.GetUser(), items)
 	if err != nil {

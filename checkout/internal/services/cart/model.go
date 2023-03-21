@@ -5,6 +5,9 @@ import (
 	"route256/checkout/internal/clients/loms"
 	"route256/checkout/internal/clients/products"
 	"route256/checkout/internal/models"
+	"route256/checkout/internal/repositories/carts_products_repo"
+	"route256/checkout/internal/repositories/carts_repo"
+	"route256/libs/transactor"
 )
 
 type ICartProcessor interface {
@@ -15,13 +18,25 @@ type ICartProcessor interface {
 }
 
 type Cart struct {
-	lomsClient     loms.ILOMSClient
-	productsClient products.IProductServiceClient
+	lomsClient        loms.ILOMSClient
+	productsClient    products.IProductServiceClient
+	cartsRepo         carts_repo.ICartsRepo
+	cartsProductsRepo carts_products_repo.ICartsProductsRepo
+	txManager         transactor.ITransactor
 }
 
-func New(lomsClient loms.ILOMSClient, productsClient products.IProductServiceClient) *Cart {
+func New(
+	lomsClient loms.ILOMSClient,
+	productsClient products.IProductServiceClient,
+	cartsRepo carts_repo.ICartsRepo,
+	cartsProductsRepo carts_products_repo.ICartsProductsRepo,
+	txManager *transactor.TransactionManager,
+) *Cart {
 	return &Cart{
-		lomsClient:     lomsClient,
-		productsClient: productsClient,
+		lomsClient:        lomsClient,
+		productsClient:    productsClient,
+		cartsRepo:         cartsRepo,
+		cartsProductsRepo: cartsProductsRepo,
+		txManager:         txManager,
 	}
 }

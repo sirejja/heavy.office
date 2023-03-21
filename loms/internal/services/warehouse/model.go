@@ -2,6 +2,7 @@ package warehouse
 
 import (
 	"context"
+	"route256/libs/transactor"
 	"route256/loms/internal/models"
 	"route256/loms/internal/repositories/warehouse_repo"
 )
@@ -11,11 +12,13 @@ type IWarehouseService interface {
 }
 
 type Warehouse struct {
-	warehouseRepo warehouse_repo.WarehouseRepo
+	warehouseRepo warehouse_repo.IWarehouseRepo
+	txManager     transactor.ITransactor
 }
 
-func New(warehouseRepo warehouse_repo.WarehouseRepo) *Warehouse {
+func New(warehouseRepo warehouse_repo.IWarehouseRepo, txManager *transactor.TransactionManager) *Warehouse {
 	return &Warehouse{
 		warehouseRepo: warehouseRepo,
+		txManager:     txManager,
 	}
 }

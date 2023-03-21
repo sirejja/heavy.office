@@ -6,8 +6,8 @@ type Item struct {
 }
 
 type Stock struct {
-	WarehouseID int64
-	Count       uint64
+	WarehouseID uint64
+	Count       uint32
 }
 
 type Order struct {
@@ -17,3 +17,24 @@ type Order struct {
 }
 
 type Warehouse struct{}
+
+type ProductToReserve struct {
+	WarehouseID uint64
+	Count       int32
+}
+
+type ListOrder struct {
+	WarehouseID uint64
+	Count       int32
+	SKU         uint32
+}
+
+type StackedOrder struct {
+	Count int32
+	SKU   uint32
+}
+
+type OrderDetails struct {
+	UserID int64
+	Status string
+}

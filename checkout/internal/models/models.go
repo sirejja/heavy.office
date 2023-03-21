@@ -21,3 +21,9 @@ type ProductAttrs struct {
 	Name  string
 	Price uint32
 }
+
+type ItemCart struct {
+	CartID uint64
+	SKU    uint32
+	Count  uint32
+}

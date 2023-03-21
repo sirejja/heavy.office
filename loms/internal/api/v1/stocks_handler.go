@@ -28,7 +28,7 @@ func (s *Implementation) Stocks(ctx context.Context, req *desc.StocksRequest) (*
 
 	stocksResp := make([]*desc.Stock, 0, len(stocks))
 	for _, stock := range stocks {
-		stocksResp = append(stocksResp, &desc.Stock{Count: stock.Count, WarehouseID: stock.WarehouseID})
+		stocksResp = append(stocksResp, &desc.Stock{Count: uint64(stock.Count), WarehouseID: int64(stock.WarehouseID)})
 	}
 
 	return &desc.StocksResponse{Stocks: stocksResp}, nil
