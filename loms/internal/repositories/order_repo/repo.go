@@ -12,6 +12,8 @@ type IOrderRepo interface {
 	CreateOrder(ctx context.Context, userID int64, status string) (uint64, error)
 	ListOrder(ctx context.Context, orderID uint64) ([]models.ListOrder, error)
 	ListOrderStacked(ctx context.Context, orderID uint64) ([]models.StackedOrder, error)
+
+	GetOrdersForCancel(ctx context.Context) ([]int64, error)
 }
 
 type OrderRepo struct {

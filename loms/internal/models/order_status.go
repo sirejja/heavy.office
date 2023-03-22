@@ -8,7 +8,7 @@ type IOrderStatus interface {
 
 const (
 	OrderStatusNew         OrderStatus = "new"
-	OrderStatusWaitPayment OrderStatus = "awaiting payment"
+	OrderStatusWaitPayment OrderStatus = "awaiting_payment"
 	OrderStatusFailed      OrderStatus = "failed"
 	OrderStatusPayed       OrderStatus = "payed"
 	OrderStatusCancelled   OrderStatus = "cancelled"
