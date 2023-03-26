@@ -1,5 +1,8 @@
 package carts_repo
 
+//go:generate sh -c "rm -rf mocks && mkdir -p mocks"
+//go:generate minimock -i ICartsRepo -o ./mocks/ -s "_minimock.go"
+
 import (
 	"context"
 	"route256/libs/transactor"

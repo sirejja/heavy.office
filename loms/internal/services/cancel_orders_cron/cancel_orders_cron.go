@@ -2,6 +2,7 @@ package cancel_orders_cron
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"route256/libs/worker_pool"
 	"route256/loms/internal/repositories/order_repo"
@@ -13,9 +14,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type CancelOrdersCron struct {
-	orders    *orders.Order
-	orderRepo *order_repo.OrderRepo
+type CancelOrdersCronService struct {
+	orders    orders.IOrdersService
+	orderRepo order_repo.IOrderRepo
 	ctx       context.Context
 }
 
@@ -23,18 +24,18 @@ type ICancelOrdersCron interface {
 	cron.Job
 }
 
-var _ ICancelOrdersCron = (*CancelOrdersCron)(nil)
+var _ ICancelOrdersCron = (*CancelOrdersCronService)(nil)
 
-func New(ctx context.Context, orders *orders.Order, orderRepo *order_repo.OrderRepo) *CancelOrdersCron {
-	return &CancelOrdersCron{
+func New(ctx context.Context, orders orders.IOrdersService, orderRepo order_repo.IOrderRepo) *CancelOrdersCronService {
+	return &CancelOrdersCronService{
 		ctx:       ctx,
 		orders:    orders,
 		orderRepo: orderRepo,
 	}
 }
 
-func (r *CancelOrdersCron) Run() {
-	op := "CancelOrdersCron.Run"
+func (r *CancelOrdersCronService) Run() {
+	op := "CancelOrdersCronService.Run"
 	log.Printf("%s started at %s", op, time.Now().Format("2006-01-02 15:04"))
 
 	orderIDs, err := r.orderRepo.GetOrdersForCancel(r.ctx)
@@ -44,21 +45,22 @@ func (r *CancelOrdersCron) Run() {
 	}
 	limiter := rate.NewLimiter(rate.Every(time.Second/100), 40)
 
-	callbacks := make([]func(struct{}) struct{}, 0, len(orderIDs))
+	callbacks := make([]func(struct{}) *worker_pool.OutSink[struct{}], 0, len(orderIDs))
 	for _, orderID := range orderIDs {
 		orderID := orderID
-		callbacks = append(callbacks, func(struct{}) struct{} {
+		callbacks = append(callbacks, func(struct{}) *worker_pool.OutSink[struct{}] {
 			err = limiter.Wait(r.ctx)
 			if err != nil {
 				log.Printf("%s: %v", op, err)
-				return struct{}{}
+				return &worker_pool.OutSink[struct{}]{Res: struct{}{}, Err: fmt.Errorf("%s: %w", op, err)}
 			}
 
 			err = r.orders.CancelOrder(r.ctx, orderID)
 			if err != nil {
 				log.Printf("%s: %v", op, err)
+				return &worker_pool.OutSink[struct{}]{Res: struct{}{}, Err: fmt.Errorf("%s: %w", op, err)}
 			}
-			return struct{}{}
+			return &worker_pool.OutSink[struct{}]{Res: struct{}{}, Err: nil}
 		})
 	}
 

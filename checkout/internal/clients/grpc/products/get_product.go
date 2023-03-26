@@ -7,13 +7,15 @@ import (
 	product_service "route256/product_service/pkg/v1/api"
 )
 
-func (c *Client) GetProduct(ctx context.Context, sku uint32) (*models.ProductAttrs, error) {
+func (c *Client) GetProduct(ctx context.Context, Sku uint32) (*models.ProductAttrs, error) {
 	op := "Client.GetProduct"
-	request := product_service.GetProductRequest{Sku: sku, Token: c.token}
-	response, err := c.client.GetProduct(ctx, &request)
+
+	response, err := c.client.GetProduct(ctx, &product_service.GetProductRequest{Sku: Sku, Token: c.token})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
 	product := models.ProductAttrs{Name: response.GetName(), Price: response.GetPrice()}
+
 	return &product, nil
 }

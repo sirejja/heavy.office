@@ -1,5 +1,8 @@
 package carts_products_repo
 
+//go:generate sh -c "rm -rf mocks && mkdir -p mocks"
+//go:generate minimock -i ICartsProductsRepo -o ./mocks/ -s "_minimock.go"
+
 import (
 	"context"
 	"route256/checkout/internal/models"

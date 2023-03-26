@@ -1,5 +1,8 @@
 package products
 
+//go:generate sh -c "rm -rf mocks && mkdir -p mocks"
+//go:generate minimock -i IProductServiceClient -o ./mocks/ -s "_minimock.go"
+
 import (
 	"context"
 	"route256/checkout/internal/models"
@@ -9,7 +12,7 @@ import (
 )
 
 type IProductServiceClient interface {
-	GetProduct(ctx context.Context, sku uint32) (*models.ProductAttrs, error)
+	GetProduct(ctx context.Context, Sku uint32) (*models.ProductAttrs, error)
 }
 
 type Client struct {

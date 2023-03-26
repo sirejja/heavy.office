@@ -14,7 +14,6 @@ func (c *Cart) PurchaseCart(ctx context.Context, user int64) (int64, error) {
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
-
 		OrderID, err = c.lomsClient.CreateOrder(ctxTX, user, cartProducts)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
