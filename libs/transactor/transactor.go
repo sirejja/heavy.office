@@ -1,16 +1,22 @@
 package transactor
 
+//go:generate sh -c "rm -rf mocks && mkdir -p mocks"
+//go:generate minimock -i ITransactor -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i IQueryEngine -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i IQueryEngineProvider -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i github.com/jackc/pgx/v4.Tx -o ./mocks/tx_minimock.go
+
 import (
 	"context"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/multierr"
 )
 
 type IQueryEngine interface {
 	Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error)
 	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx, error)
 }
 
 type IQueryEngineProvider interface {
@@ -22,17 +28,17 @@ type ITransactor interface {
 
 type transactKey string
 
-const ctxTransactKey = transactKey("transact")
+const TXKey = transactKey("transact")
 
 type TransactionManager struct {
-	pool   *pgxpool.Pool
+	pool   IQueryEngine
 	ctxKey transactKey
 }
 
-func New(pool *pgxpool.Pool) *TransactionManager {
+func New(pool IQueryEngine) *TransactionManager {
 	return &TransactionManager{
 		pool:   pool,
-		ctxKey: ctxTransactKey,
+		ctxKey: TXKey,
 	}
 }
 
@@ -44,13 +50,13 @@ func (tm *TransactionManager) RunRepeatableRead(ctx context.Context, fx func(ctx
 	if err != nil {
 		return err
 	}
-
-	if err = fx(context.WithValue(ctx, tm.ctxKey, tx)); err != nil {
-		return multierr.Combine(err, tx.Rollback(ctx))
+	ctxTX := context.WithValue(ctx, tm.ctxKey, tx)
+	if err = fx(ctxTX); err != nil {
+		return multierr.Combine(err, tx.Rollback(ctxTX))
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		return multierr.Combine(err, tx.Rollback(ctx))
+	if err = tx.Commit(ctxTX); err != nil {
+		return multierr.Combine(err, tx.Rollback(ctxTX))
 	}
 
 	return nil

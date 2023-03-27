@@ -3,8 +3,8 @@ package cronjob
 import (
 	"context"
 	"log"
-	"route256/loms/internal/cronjob/cancel_orders_cron"
 	"route256/loms/internal/repositories/order_repo"
+	"route256/loms/internal/services/cancel_orders_cron"
 	"route256/loms/internal/services/orders"
 
 	"github.com/robfig/cron"
@@ -12,12 +12,12 @@ import (
 
 type CronJob struct {
 	cronjob          *cron.Cron
-	orders           *orders.Order
-	orderRepo        *order_repo.OrderRepo
+	orders           orders.IOrdersService
+	orderRepo        order_repo.IOrderRepo
 	specCancelOrders string
 }
 
-func New(orders *orders.Order, orderRepo *order_repo.OrderRepo, specCancelOrders string) CronJob {
+func New(orders orders.IOrdersService, orderRepo order_repo.IOrderRepo, specCancelOrders string) CronJob {
 	cronjob := cron.New()
 
 	return CronJob{cronjob: cronjob, orders: orders, orderRepo: orderRepo, specCancelOrders: specCancelOrders}

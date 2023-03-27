@@ -13,6 +13,7 @@ type ConfigStruct struct {
 	Storage struct {
 		PostgresDSN string
 	}
+	CancelOrdersCronPeriod string
 }
 
 func New() *ConfigStruct {
@@ -34,6 +35,11 @@ func (c *ConfigStruct) Init() error {
 	c.Storage.PostgresDSN = os.Getenv("DB_DSN")
 	if c.Storage.PostgresDSN == "" {
 		return fmt.Errorf("%s: %w", op, errors.New("Database credentials are not provided"))
+	}
+
+	c.CancelOrdersCronPeriod = os.Getenv("CANCEL_ORDERS_CRON_SCHEDULE")
+	if c.CancelOrdersCronPeriod == "" {
+		return fmt.Errorf("%s: %w", op, errors.New("Cancel orders cron not scheduled"))
 	}
 
 	return nil

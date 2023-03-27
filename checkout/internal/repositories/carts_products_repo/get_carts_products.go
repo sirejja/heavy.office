@@ -19,6 +19,7 @@ func (c *cartsProductsRepo) GetCartsProducts(ctx context.Context, userID int64) 
 		LeftJoin("carts c on c.id = cp.cart_id").
 		Where(sq.Eq{"cp.deleted_at": nil}).
 		Where(sq.Eq{"c.user_id": userID}).
+		Where(sq.Eq{"c.purchased_at": nil}).
 		PlaceholderFormat(sq.Dollar)
 
 	sql, args, err := query.ToSql()
@@ -28,10 +29,11 @@ func (c *cartsProductsRepo) GetCartsProducts(ctx context.Context, userID int64) 
 
 	var cartsProductsRows []*schema.CartProductsSchema
 	if err = pgxscan.Select(ctx, db, &cartsProductsRows, sql, args...); err != nil {
-		if pgxscan.NotFound(err) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if len(cartsProductsRows) == 0 {
+		return nil, fmt.Errorf("%s: %w", op, models.ErrCartNotFound)
 	}
 
 	products := make([]models.Item, 0, len(cartsProductsRows))

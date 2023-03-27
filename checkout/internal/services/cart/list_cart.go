@@ -30,42 +30,42 @@ func (c *Cart) processGetProductBatch(ctx context.Context, user int64) ([]models
 	var totalPrice uint32
 	var mutex sync.Mutex
 
-	callbacks := make([]func(struct{}) map[string]any, 0, len(cartProducts))
+	callbacks := make([]func(struct{}) *worker_pool.OutSink[*models.CartProduct], 0, len(cartProducts))
 	for _, cartProduct := range cartProducts {
 		cartProduct := cartProduct
-		callbacks = append(callbacks, func(struct{}) map[string]any {
+		callbacks = append(callbacks, func(struct{}) *worker_pool.OutSink[*models.CartProduct] {
 			err = c.productsLimiter.Wait(ctx)
 			if err != nil {
-				return map[string]any{"error": fmt.Errorf("%s: %w", op, err)}
+				return &worker_pool.OutSink[*models.CartProduct]{Res: nil, Err: fmt.Errorf("%s: %w", op, err)}
 			}
 
 			product, err := c.productsClient.GetProduct(ctx, cartProduct.SKU)
 			if err != nil {
-				return map[string]any{"error": fmt.Errorf("%s: %w", op, err)}
+				return &worker_pool.OutSink[*models.CartProduct]{Res: nil, Err: fmt.Errorf("%s: %w", op, err)}
 			}
 			mutex.Lock()
 			totalPrice += product.Price * cartProduct.Count
 			mutex.Unlock()
-			return map[string]any{
-				"data": &models.CartProduct{
+			return &worker_pool.OutSink[*models.CartProduct]{
+				Res: &models.CartProduct{
 					SKU:   cartProduct.SKU,
 					Count: cartProduct.Count,
 					Name:  product.Name,
 					Price: product.Price,
 				},
-				"error": nil,
+				Err: nil,
 			}
 		})
 	}
 
 	amountWorkers := 5
-	batchingPool, workerCh := worker_pool.NewPool[struct{}, map[string]any](ctx, amountWorkers)
+	batchingPool, workerCh := worker_pool.NewPool[struct{}, *models.CartProduct](ctx, amountWorkers)
 
 	var wg sync.WaitGroup
-	tasks := make([]worker_pool.Task[struct{}, map[string]any], 0, len(cartProducts))
+	tasks := make([]worker_pool.Task[struct{}, *models.CartProduct], 0, len(cartProducts))
 	for _, callback := range callbacks {
 		wg.Add(1)
-		tasks = append(tasks, worker_pool.Task[struct{}, map[string]any]{
+		tasks = append(tasks, worker_pool.Task[struct{}, *models.CartProduct]{
 			Callback: callback,
 			InArgs:   struct{}{},
 		})
@@ -77,10 +77,11 @@ func (c *Cart) processGetProductBatch(ctx context.Context, user int64) ([]models
 	go func() {
 		for res := range workerCh {
 			wg.Done()
-			if res["error"] != nil {
-				err = fmt.Errorf("%s: %w", op, err)
+			if res.Err != nil {
+				err = fmt.Errorf("%s: %w", op, res.Err)
+				continue
 			}
-			resultCartProducts = append(resultCartProducts, *(res["data"].(*models.CartProduct)))
+			resultCartProducts = append(resultCartProducts, *res.Res)
 		}
 	}()
 	wg.Wait()

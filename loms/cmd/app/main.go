@@ -76,7 +76,7 @@ func main() {
 
 	// cronjob
 	log.Println("CronJob starting...")
-	cronJob := cronjob.New(ordersProcessor, ordersRepo, "@every 1m")
+	cronJob := cronjob.New(ordersProcessor, ordersRepo, cfg.CancelOrdersCronPeriod)
 	cronJob.Start(ctx)
 	log.Println("CronJob started")
 

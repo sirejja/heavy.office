@@ -9,6 +9,7 @@ var (
 	ErrInsufficientStocks = errors.New("insufficient stocks_handler")
 
 	ErrDBEmptySKU      = errors.New("empty sku in db query")
+	ErrCartNotFound    = errors.New("cart not found")
 	ErrInsertFailed    = errors.New("Insert failed")
 	ErrNothingToDelete = errors.New("User has no such products in cart")
 	ErrNoDataProvided  = errors.New("No data provided")

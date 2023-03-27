@@ -5,14 +5,17 @@ import (
 	"sync"
 )
 
+type OutSink[Out any] struct {
+	Res Out
+	Err error
+}
 type Task[In, Out any] struct {
-	Callback func(In) Out
+	Callback func(In) *OutSink[Out]
 	InArgs   In
 }
 
 type IPool[In, Out any] interface {
 	Submit(ctx context.Context, tasks []Task[In, Out])
-	//SplitTasksByChunks(in []Task[In, Out], chunkSize int) [][]Task[In, Out]
 	Close()
 }
 
@@ -24,10 +27,10 @@ type poolInstance[In, Out any] struct {
 	wg sync.WaitGroup
 
 	taskSource chan Task[In, Out]
-	outSink    chan Out
+	outSink    chan *OutSink[Out]
 }
 
-func NewPool[In, Out any](ctx context.Context, amountWorkers int) (IPool[In, Out], <-chan Out) {
+func NewPool[In, Out any](ctx context.Context, amountWorkers int) (IPool[In, Out], <-chan *OutSink[Out]) {
 	pool := &poolInstance[In, Out]{
 		amountWorkers: amountWorkers,
 	}
@@ -66,7 +69,7 @@ func (p *poolInstance[In, Out]) Submit(ctx context.Context, tasks []Task[In, Out
 
 func (p *poolInstance[In, Out]) bootstrap(ctx context.Context) {
 	p.taskSource = make(chan Task[In, Out], p.amountWorkers)
-	p.outSink = make(chan Out, p.amountWorkers)
+	p.outSink = make(chan *OutSink[Out], p.amountWorkers)
 
 	for i := 0; i < p.amountWorkers; i++ {
 		p.wg.Add(1)
@@ -80,7 +83,7 @@ func (p *poolInstance[In, Out]) bootstrap(ctx context.Context) {
 func worker[In, Out any](
 	ctx context.Context,
 	taskSource <-chan Task[In, Out],
-	resultSink chan<- Out,
+	resultSink chan<- *OutSink[Out],
 ) {
 	for task := range taskSource {
 		select {
@@ -92,24 +95,24 @@ func worker[In, Out any](
 	return
 }
 
-func splitTasksByChunks[In, Out any](tasks []Task[In, Out], chunkSize int) [][]Task[In, Out] {
-	if len(tasks) == 0 {
-		return nil
-	}
-
-	if len(tasks) <= chunkSize {
-		return [][]Task[In, Out]{tasks}
-	}
-
-	var result [][]Task[In, Out]
-	chunk := make([]Task[In, Out], 0, len(tasks))
-	for _, task := range tasks {
-		chunk = append(chunk, task)
-		if len(chunk) == chunkSize {
-			result = append(result, chunk)
-			chunk = make([]Task[In, Out], 0, len(tasks))
-		}
-	}
-
-	return result
-}
+//func splitTasksByChunks[In, Out any](tasks []Task[In, Out], chunkSize int) [][]Task[In, Out] {
+//	if len(tasks) == 0 {
+//		return nil
+//	}
+//
+//	if len(tasks) <= chunkSize {
+//		return [][]Task[In, Out]{tasks}
+//	}
+//
+//	var result [][]Task[In, Out]
+//	chunk := make([]Task[In, Out], 0, len(tasks))
+//	for _, task := range tasks {
+//		chunk = append(chunk, task)
+//		if len(chunk) == chunkSize {
+//			result = append(result, chunk)
+//			chunk = make([]Task[In, Out], 0, len(tasks))
+//		}
+//	}
+//
+//	return result
+//}

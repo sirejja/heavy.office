@@ -2,8 +2,8 @@ package cart
 
 import (
 	"context"
-	"route256/checkout/internal/clients/loms"
-	"route256/checkout/internal/clients/products"
+	"route256/checkout/internal/clients/grpc/loms"
+	"route256/checkout/internal/clients/grpc/products"
 	"route256/checkout/internal/models"
 	"route256/checkout/internal/repositories/carts_products_repo"
 	"route256/checkout/internal/repositories/carts_repo"
@@ -33,7 +33,7 @@ func New(
 	productsClient products.IProductServiceClient,
 	cartsRepo carts_repo.ICartsRepo,
 	cartsProductsRepo carts_products_repo.ICartsProductsRepo,
-	txManager *transactor.TransactionManager,
+	txManager transactor.ITransactor,
 	productsLimiter *rate.Limiter,
 ) *Cart {
 	return &Cart{
@@ -44,4 +44,27 @@ func New(
 		txManager:         txManager,
 		productsLimiter:   productsLimiter,
 	}
+}
+
+func NewMockService(deps ...interface{}) *Cart {
+	ns := Cart{}
+
+	for _, v := range deps {
+		switch s := v.(type) {
+		case loms.ILOMSClient:
+			ns.lomsClient = s
+		case products.IProductServiceClient:
+			ns.productsClient = s
+		case carts_repo.ICartsRepo:
+			ns.cartsRepo = s
+		case carts_products_repo.ICartsProductsRepo:
+			ns.cartsProductsRepo = s
+		case transactor.ITransactor:
+			ns.txManager = s
+		case *rate.Limiter:
+			ns.productsLimiter = s
+		}
+	}
+
+	return &ns
 }
