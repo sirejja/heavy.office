@@ -20,6 +20,10 @@ func (o *Order) CancelOrder(ctx context.Context, orderID int64) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	if err = o.brokerSender.SendOrderOrderStatusEvent(orderID, models.OrderStatusCancelled); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }
 

@@ -14,5 +14,9 @@ func (o *Order) PayedOrder(ctx context.Context, orderID int64) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	if err = o.brokerSender.SendOrderOrderStatusEvent(orderID, models.OrderStatusPayed); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }

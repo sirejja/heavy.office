@@ -11,6 +11,8 @@ import (
 	v1 "route256/loms/internal/api/v1"
 	"route256/loms/internal/config"
 	"route256/loms/internal/cronjob"
+	kafka_sender "route256/loms/internal/kafka/order_sender"
+	kafka "route256/loms/internal/kafka/producer"
 	"route256/loms/internal/repositories/order_repo"
 	"route256/loms/internal/repositories/warehouse_orders_repo"
 	"route256/loms/internal/repositories/warehouse_repo"
@@ -24,8 +26,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
-
-const port = ":8081"
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -56,12 +56,25 @@ func main() {
 	ordersRepo := order_repo.New(transactionManager)
 	warehouseOrdersRepo := warehouse_orders_repo.New(transactionManager)
 
-	ordersProcessor := orders.New(ordersRepo, warehouseRepo, warehouseOrdersRepo, transactionManager)
+	producer, err := kafka.NewSyncProducer(cfg.Kafka.Brokers)
+	if err != nil {
+		log.Fatal("Unable to connect to kafka", err)
+	}
+	defer producer.Close()
+
+	ordersProcessor := orders.New(
+		ordersRepo,
+		warehouseRepo,
+		warehouseOrdersRepo,
+		transactionManager,
+		kafka_sender.NewOrderSender(producer, cfg.Kafka.Topics.OrderStatus),
+	)
+
 	warehouseProcessor := warehouse.New(warehouseRepo, transactionManager)
 
-	lis, err := net.Listen("tcp", port)
+	lis, err := net.Listen("tcp", cfg.Web.Port)
 	if err != nil {
-		log.Fatalf("failed to connect to listen %v: %v", port, err)
+		log.Fatalf("failed to connect to listen %v: %v", cfg.Web.Port, err)
 	}
 
 	server := grpc.NewServer(
@@ -80,7 +93,7 @@ func main() {
 	cronJob.Start(ctx)
 	log.Println("CronJob started")
 
-	log.Println("grpc server listening at", port)
+	log.Println("grpc server listening at", cfg.Web.Port)
 	if err = server.Serve(lis); err != nil {
 		log.Fatal("failed to serve", err)
 	}

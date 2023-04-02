@@ -8,12 +8,8 @@ require (
 	github.com/georgysavva/scany v1.2.1
 	github.com/gojuno/minimock/v3 v3.1.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/jackc/pgconn v1.14.0
-	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/joho/godotenv v1.5.1
-	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.15.0
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.53.0
@@ -26,6 +22,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
+	github.com/jackc/pgconn v1.14.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.3.2 // indirect

@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 	"route256/libs/transactor"
+	"route256/loms/internal/kafka/order_sender"
 	"route256/loms/internal/models"
 	"route256/loms/internal/repositories/order_repo"
 	"route256/loms/internal/repositories/warehouse_orders_repo"
@@ -21,6 +22,7 @@ type Order struct {
 	warehouseRepo       warehouse_repo.IWarehouseRepo
 	warehouseOrdersRepo warehouse_orders_repo.IWarehouseOrdersRepo
 	txManager           transactor.ITransactor
+	brokerSender        order_sender.IOrderSender
 }
 
 var _ IOrdersService = (*Order)(nil)
@@ -30,11 +32,13 @@ func New(
 	warehouseRepo warehouse_repo.IWarehouseRepo,
 	warehouseOrdersRepo warehouse_orders_repo.IWarehouseOrdersRepo,
 	txManager *transactor.TransactionManager,
+	brokerSender order_sender.IOrderSender,
 ) *Order {
 	return &Order{
 		ordersRepo:          ordersRepo,
 		warehouseRepo:       warehouseRepo,
 		warehouseOrdersRepo: warehouseOrdersRepo,
 		txManager:           txManager,
+		brokerSender:        brokerSender,
 	}
 }

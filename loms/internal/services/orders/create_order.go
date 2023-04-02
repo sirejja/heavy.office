@@ -38,17 +38,28 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
+	if err = o.brokerSender.SendOrderOrderStatusEvent(int64(orderID), models.OrderStatusNew); err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
 
 	err = o.reserveOrderProducts(ctx, productsToReserve, orderID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 	_, err = o.ordersRepo.UpdateOrderStatus(ctx, int64(orderID), models.OrderStatusWaitPayment)
+
 	if err != nil {
 		_, errStatus := o.ordersRepo.UpdateOrderStatus(ctx, int64(orderID), models.OrderStatusFailed)
 		if errStatus != nil {
 			return 0, fmt.Errorf("%s: %w", op, errStatus)
 		}
+		if err = o.brokerSender.SendOrderOrderStatusEvent(int64(orderID), models.OrderStatusFailed); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err = o.brokerSender.SendOrderOrderStatusEvent(int64(orderID), models.OrderStatusWaitPayment); err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -56,6 +67,9 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 	if err != nil {
 		_, err = o.ordersRepo.UpdateOrderStatus(ctx, int64(orderID), models.OrderStatusFailed)
 		if err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+		if err = o.brokerSender.SendOrderOrderStatusEvent(int64(orderID), models.OrderStatusFailed); err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
 		return 0, fmt.Errorf("%s: %w", op, err)

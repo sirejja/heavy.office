@@ -10,6 +10,15 @@ import (
 )
 
 type ConfigStruct struct {
+	Web struct {
+		Port string `yaml:"port"`
+	} `yaml:"web"`
+	Kafka struct {
+		Brokers []string `yaml:"brokers"`
+		Topics  struct {
+			OrderStatus string `yaml:"order-status"`
+		} `yaml:"topics"`
+	} `yaml:"kafka"`
 	Storage struct {
 		PostgresDSN string
 	}
@@ -19,6 +28,7 @@ type ConfigStruct struct {
 func New() *ConfigStruct {
 	return &ConfigStruct{}
 }
+
 func (c *ConfigStruct) Init() error {
 	op := "ConfigStruct.Init"
 	rawYAML, err := os.ReadFile("config.yaml")
