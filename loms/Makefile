@@ -82,6 +82,6 @@ generate_server:
 		--plugin=protoc-gen-validate=bin/protoc-gen-validate \
 		api/v1/loms_v1.proto
 
-run_migrations:
+run-migrations:
 	goose -dir ./migrations postgres $(PG_DSN) status
 	goose -dir ./migrations postgres $(PG_DSN) up

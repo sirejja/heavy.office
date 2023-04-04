@@ -1,4 +1,4 @@
-package cancel_orders_cron
+package cancel_orders
 
 import (
 	"context"

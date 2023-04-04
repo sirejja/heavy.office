@@ -1,26 +1,24 @@
-package order_repo
+package outbox_repo
 
 import (
 	"context"
 	"fmt"
-	"route256/loms/internal/models"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
 )
 
-func (o *OrderRepo) CreateOrder(ctx context.Context, userID int64, status models.OrderStatus) (uint64, error) {
-	op := "OrderRepo.CreateOrder"
+func (o *outboxRepo) DeleteTask(ctx context.Context, taskID uint64) (uint64, error) {
+	op := "outboxRepo.DeleteTask"
 	db := o.db.GetQueryEngine(ctx)
 
-	query := sq.Insert(o.name).
-		Columns("user_id, status").
-		Values(userID, status.ToString()).
+	query := sq.Update(o.name).
+		Set("deleted_at", sq.Expr("current_timestamp")).
+		Where(sq.Eq{"id": taskID}).
 		Suffix("RETURNING id").
 		PlaceholderFormat(sq.Dollar)
 
 	sql, args, err := query.ToSql()
-
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}

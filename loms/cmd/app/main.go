@@ -12,11 +12,13 @@ import (
 	v1 "route256/loms/internal/api/v1"
 	"route256/loms/internal/config"
 	"route256/loms/internal/cronjob"
-	kafka_sender "route256/loms/internal/kafka/order_sender"
+	"route256/loms/internal/kafka/outbox_producer"
 	"route256/loms/internal/repositories/order_repo"
+	"route256/loms/internal/repositories/outbox_repo"
 	"route256/loms/internal/repositories/warehouse_orders_repo"
 	"route256/loms/internal/repositories/warehouse_repo"
-	"route256/loms/internal/services/cancel_orders_cron"
+	cancel_orders_cron "route256/loms/internal/services/cron/cancel_orders"
+	"route256/loms/internal/services/cron/outbox"
 	"route256/loms/internal/services/orders"
 	"route256/loms/internal/services/warehouse"
 	desc "route256/loms/pkg/v1/api"
@@ -56,6 +58,7 @@ func main() {
 	warehouseRepo := warehouse_repo.New(transactionManager)
 	ordersRepo := order_repo.New(transactionManager)
 	warehouseOrdersRepo := warehouse_orders_repo.New(transactionManager)
+	outboxRepo := outbox_repo.New(transactionManager)
 
 	producer, err := kafka.NewSyncProducer(cfg.Kafka.Brokers)
 	if err != nil {
@@ -67,8 +70,9 @@ func main() {
 		ordersRepo,
 		warehouseRepo,
 		warehouseOrdersRepo,
+		outboxRepo,
 		transactionManager,
-		kafka_sender.NewOrderSender(producer, cfg.Kafka.Topics.OrderStatus),
+		cfg,
 	)
 
 	warehouseProcessor := warehouse.New(warehouseRepo, transactionManager)
@@ -91,7 +95,9 @@ func main() {
 	// cronjob
 	log.Println("CronJob starting...")
 	cancelOrdersJob := cancel_orders_cron.New(ctx, ordersProcessor, ordersRepo, cfg.CancelOrdersCronPeriod)
-	cronJob := cronjob.New(cancelOrdersJob)
+	outboxCron := outbox.New(ctx, outbox_producer.New(producer), outboxRepo, cfg.OutboxCronPeriod)
+
+	cronJob := cronjob.New(cancelOrdersJob, outboxCron)
 	cronJob.Start()
 	log.Println("CronJob started")
 

@@ -2,20 +2,23 @@ package cronjob
 
 import (
 	"log"
-	"route256/loms/internal/services/cancel_orders_cron"
+	"route256/loms/internal/services/cron/cancel_orders"
+	"route256/loms/internal/services/cron/outbox"
 
 	"github.com/robfig/cron"
 )
 
 type CronJob struct {
 	cronjob         *cron.Cron
-	cancelOrdersJob *cancel_orders_cron.CancelOrdersJob
+	cancelOrdersJob *cancel_orders.CancelOrdersJob
+	outboxJob       *outbox.OutboxJob
 }
 
-func New(cancelOrdersCron *cancel_orders_cron.CancelOrdersJob) CronJob {
+func New(cancelOrdersJob *cancel_orders.CancelOrdersJob, outboxJob *outbox.OutboxJob) CronJob {
 	return CronJob{
 		cronjob:         cron.New(),
-		cancelOrdersJob: cancelOrdersCron,
+		cancelOrdersJob: cancelOrdersJob,
+		outboxJob:       outboxJob,
 	}
 }
 
@@ -23,6 +26,10 @@ func (c *CronJob) Start() {
 	op := "CronJob.Start"
 
 	err := c.cronjob.AddJob(c.cancelOrdersJob.SpecCancelOrders, c.cancelOrdersJob)
+	if err != nil {
+		log.Printf("%s: %v", op, err)
+	}
+	err = c.cronjob.AddJob(c.outboxJob.SpecOutbox, c.outboxJob)
 	if err != nil {
 		log.Printf("%s: %v", op, err)
 	}

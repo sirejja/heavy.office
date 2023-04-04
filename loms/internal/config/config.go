@@ -23,6 +23,7 @@ type ConfigStruct struct {
 		PostgresDSN string
 	}
 	CancelOrdersCronPeriod string
+	OutboxCronPeriod       string
 }
 
 func New() *ConfigStruct {
@@ -50,6 +51,11 @@ func (c *ConfigStruct) Init() error {
 	c.CancelOrdersCronPeriod = os.Getenv("CANCEL_ORDERS_CRON_SCHEDULE")
 	if c.CancelOrdersCronPeriod == "" {
 		return fmt.Errorf("%s: %w", op, errors.New("Cancel orders cron not scheduled"))
+	}
+
+	c.OutboxCronPeriod = os.Getenv("OUTBOX_CRON_SCHEDULE")
+	if c.OutboxCronPeriod == "" {
+		return fmt.Errorf("%s: %w", op, errors.New("Outbox cron not scheduled"))
 	}
 
 	return nil

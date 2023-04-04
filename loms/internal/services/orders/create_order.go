@@ -3,7 +3,7 @@ package orders
 import (
 	"context"
 	"fmt"
-	"route256/loms/internal/kafka/order_sender"
+	"route256/loms/internal/kafka/outbox_producer"
 	"route256/loms/internal/models"
 )
 
@@ -35,11 +35,17 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	orderID, err := o.ordersRepo.CreateOrder(ctx, user, models.OrderStatusNew.ToString())
+	orderID, err := o.ordersRepo.CreateOrder(ctx, user, models.OrderStatusNew)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-	if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusCancelled}); err != nil {
+
+	err = o.outboxRepo.ProcessOutboxTaskCreation(
+		ctx,
+		o.cfg.Kafka.Topics.OrderStatus,
+		outbox_producer.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusCancelled.ToString()},
+	)
+	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -54,13 +60,25 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		if errStatus != nil {
 			return 0, fmt.Errorf("%s: %w", op, errStatus)
 		}
-		if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusFailed}); err != nil {
+
+		err = o.outboxRepo.ProcessOutboxTaskCreation(
+			ctx,
+			o.cfg.Kafka.Topics.OrderStatus,
+			outbox_producer.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusFailed.ToString()},
+		)
+		if err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
+
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusWaitPayment}); err != nil {
+	err = o.outboxRepo.ProcessOutboxTaskCreation(
+		ctx,
+		o.cfg.Kafka.Topics.OrderStatus,
+		outbox_producer.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusWaitPayment.ToString()},
+	)
+	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -70,9 +88,16 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		if err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
-		if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusFailed}); err != nil {
+
+		err = o.outboxRepo.ProcessOutboxTaskCreation(
+			ctx,
+			o.cfg.Kafka.Topics.OrderStatus,
+			outbox_producer.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusFailed.ToString()},
+		)
+		if err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
+
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 

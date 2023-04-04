@@ -9,7 +9,7 @@ import (
 type IOrderRepo interface {
 	GetOrderDetails(ctx context.Context, orderID uint64) (*models.OrderDetails, error)
 	UpdateOrderStatus(ctx context.Context, orderID int64, status models.OrderStatus) (uint64, error)
-	CreateOrder(ctx context.Context, userID int64, status string) (uint64, error)
+	CreateOrder(ctx context.Context, userID int64, status models.OrderStatus) (uint64, error)
 	ListOrder(ctx context.Context, orderID uint64) ([]models.ListOrder, error)
 	ListOrderStacked(ctx context.Context, orderID uint64) ([]models.StackedOrder, error)
 
