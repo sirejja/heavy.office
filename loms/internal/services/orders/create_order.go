@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 	"fmt"
+	"route256/loms/internal/kafka/order_sender"
 	"route256/loms/internal/models"
 )
 
@@ -38,7 +39,7 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-	if err = o.brokerSender.SendOrderOrderStatusEvent(int64(orderID), models.OrderStatusNew); err != nil {
+	if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusCancelled}); err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -53,13 +54,13 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		if errStatus != nil {
 			return 0, fmt.Errorf("%s: %w", op, errStatus)
 		}
-		if err = o.brokerSender.SendOrderOrderStatusEvent(int64(orderID), models.OrderStatusFailed); err != nil {
+		if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusFailed}); err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err = o.brokerSender.SendOrderOrderStatusEvent(int64(orderID), models.OrderStatusWaitPayment); err != nil {
+	if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusWaitPayment}); err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -69,7 +70,7 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		if err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
-		if err = o.brokerSender.SendOrderOrderStatusEvent(int64(orderID), models.OrderStatusFailed); err != nil {
+		if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusFailed}); err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
 		return 0, fmt.Errorf("%s: %w", op, err)

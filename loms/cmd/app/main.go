@@ -7,15 +7,16 @@ import (
 	"os"
 	"os/signal"
 	"route256/libs/interceptors"
+	kafka "route256/libs/kafka/producer"
 	"route256/libs/transactor"
 	v1 "route256/loms/internal/api/v1"
 	"route256/loms/internal/config"
 	"route256/loms/internal/cronjob"
 	kafka_sender "route256/loms/internal/kafka/order_sender"
-	kafka "route256/loms/internal/kafka/producer"
 	"route256/loms/internal/repositories/order_repo"
 	"route256/loms/internal/repositories/warehouse_orders_repo"
 	"route256/loms/internal/repositories/warehouse_repo"
+	"route256/loms/internal/services/cancel_orders_cron"
 	"route256/loms/internal/services/orders"
 	"route256/loms/internal/services/warehouse"
 	desc "route256/loms/pkg/v1/api"
@@ -89,8 +90,9 @@ func main() {
 
 	// cronjob
 	log.Println("CronJob starting...")
-	cronJob := cronjob.New(ordersProcessor, ordersRepo, cfg.CancelOrdersCronPeriod)
-	cronJob.Start(ctx)
+	cancelOrdersJob := cancel_orders_cron.New(ctx, ordersProcessor, ordersRepo, cfg.CancelOrdersCronPeriod)
+	cronJob := cronjob.New(cancelOrdersJob)
+	cronJob.Start()
 	log.Println("CronJob started")
 
 	log.Println("grpc server listening at", cfg.Web.Port)

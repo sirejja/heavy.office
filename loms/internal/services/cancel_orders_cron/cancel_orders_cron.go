@@ -14,28 +14,30 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type CancelOrdersCronService struct {
-	orders    orders.IOrdersService
-	orderRepo order_repo.IOrderRepo
-	ctx       context.Context
+type CancelOrdersJob struct {
+	orders           orders.IOrdersService
+	orderRepo        order_repo.IOrderRepo
+	ctx              context.Context
+	SpecCancelOrders string
 }
 
 type ICancelOrdersCron interface {
 	cron.Job
 }
 
-var _ ICancelOrdersCron = (*CancelOrdersCronService)(nil)
+var _ ICancelOrdersCron = (*CancelOrdersJob)(nil)
 
-func New(ctx context.Context, orders orders.IOrdersService, orderRepo order_repo.IOrderRepo) *CancelOrdersCronService {
-	return &CancelOrdersCronService{
-		ctx:       ctx,
-		orders:    orders,
-		orderRepo: orderRepo,
+func New(ctx context.Context, orders orders.IOrdersService, orderRepo order_repo.IOrderRepo, specCancelOrders string) *CancelOrdersJob {
+	return &CancelOrdersJob{
+		ctx:              ctx,
+		orders:           orders,
+		orderRepo:        orderRepo,
+		SpecCancelOrders: specCancelOrders,
 	}
 }
 
-func (o *CancelOrdersCronService) Run() {
-	op := "CancelOrdersCronService.Run"
+func (o *CancelOrdersJob) Run() {
+	op := "CancelOrdersJob.Run"
 	log.Printf("%s started at %s", op, time.Now().Format("2006-01-02 15:04"))
 
 	orderIDs, err := o.orderRepo.GetOrdersForCancel(o.ctx)

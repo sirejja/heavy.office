@@ -2,22 +2,21 @@ package consumer_group
 
 import (
 	"log"
-	"route256/notifications/internal/services/orders"
 
 	"github.com/Shopify/sarama"
 )
 
 // Consumer represents a Sarama consumer group consumer
 type Consumer struct {
-	ready        chan bool
-	orderService orders.IOrdersService
+	ready               chan bool
+	topicHandlerMapping map[string]func(msg *sarama.ConsumerMessage) error
 }
 
 // NewConsumer - constructor
-func New(orderService orders.IOrdersService) Consumer {
+func New(topicHandlerMapping map[string]func(msg *sarama.ConsumerMessage) error) Consumer {
 	return Consumer{
-		ready:        make(chan bool),
-		orderService: orderService,
+		ready:               make(chan bool),
+		topicHandlerMapping: topicHandlerMapping,
 	}
 }
 
@@ -46,12 +45,15 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 	for {
 		select {
 		case message := <-claim.Messages():
-
-			if err := consumer.orderService.NotificateOrderCreated(message); err != nil {
-				log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
+			topicHandler, ok := consumer.topicHandlerMapping[message.Topic]
+			if ok {
+				if err := topicHandler(message); err != nil {
+					log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
+				}
+				session.MarkMessage(message, "")
+			} else {
+				log.Printf("Unbinded topic recieved")
 			}
-
-			session.MarkMessage(message, "")
 
 		// Should return when `session.Context()` is done.
 		// If not, will raise `ErrRebalanceInProgress` or `read tcp <ip>:<port>: i/o timeout` when kafka rebalance. see:

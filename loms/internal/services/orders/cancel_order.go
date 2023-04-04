@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 	"fmt"
+	"route256/loms/internal/kafka/order_sender"
 	"route256/loms/internal/models"
 )
 
@@ -20,7 +21,7 @@ func (o *Order) CancelOrder(ctx context.Context, orderID int64) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err = o.brokerSender.SendOrderOrderStatusEvent(orderID, models.OrderStatusCancelled); err != nil {
+	if err = o.brokerSender.SendOrderOrderStatusEvent(order_sender.OrderStatusMsg{ID: orderID, Status: models.OrderStatusCancelled}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 

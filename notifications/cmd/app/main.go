@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"route256/notifications/internal/config"
-	"route256/notifications/internal/kafka/consumer_group"
+	"route256/notifications/internal/kafka"
 	"route256/notifications/internal/services/orders"
 	"sync"
 	"syscall"
@@ -22,24 +22,8 @@ func main() {
 	if err := cfg.Init(); err != nil {
 		log.Fatal("config init", err)
 	}
-	/**
-	 * Construct a new Sarama configuration.
-	 * The Kafka cluster version has to be defined before the consumer/producer is initialized.
-	 */
-	kafkaCfg := sarama.NewConfig()
-	kafkaCfg.Version = sarama.MaxVersion
-	kafkaCfg.Consumer.Offsets.Initial = sarama.OffsetNewest
 
-	switch cfg.Kafka.BalanceStrategy {
-	case "sticky":
-		kafkaCfg.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.BalanceStrategySticky}
-	case "roundrobin":
-		kafkaCfg.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.BalanceStrategyRoundRobin}
-	case "range":
-		kafkaCfg.Consumer.Group.Rebalance.GroupStrategies = []sarama.BalanceStrategy{sarama.BalanceStrategyRange}
-	}
-
-	consumer := consumer_group.New(orders.New())
+	consumer, kafkaCfg := kafka.NewConsumerGroup(cfg, orders.New())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	client, err := sarama.NewConsumerGroup(cfg.Kafka.Brokers, cfg.Kafka.GroupName, kafkaCfg)

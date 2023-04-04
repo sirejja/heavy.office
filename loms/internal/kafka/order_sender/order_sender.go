@@ -15,10 +15,8 @@ type orderSender struct {
 }
 
 type IOrderSender interface {
-	SendOrderOrderStatusEvent(id int64, status models.OrderStatus) error
+	SendOrderOrderStatusEvent(orderMsg OrderStatusMsg) error
 }
-
-//type Handler func(id string)
 
 func NewOrderSender(producer sarama.SyncProducer, topic string) IOrderSender {
 	s := &orderSender{
@@ -28,19 +26,24 @@ func NewOrderSender(producer sarama.SyncProducer, topic string) IOrderSender {
 	return s
 }
 
-func (s *orderSender) SendOrderOrderStatusEvent(id int64, status models.OrderStatus) error {
+type OrderStatusMsg struct {
+	ID     int64
+	Status models.OrderStatus
+}
+
+func (s *orderSender) SendOrderOrderStatusEvent(orderMsg OrderStatusMsg) error {
 	op := "orderSender.SendOrderOrderStatusEvent"
 
 	msg := &sarama.ProducerMessage{
 		Topic:     s.topic,
 		Partition: -1,
-		Value:     sarama.StringEncoder(fmt.Sprintf(`{"id":%d, status: %s}`, id, status.ToString())),
-		Key:       sarama.StringEncoder(fmt.Sprint(id)),
+		Value:     sarama.StringEncoder(fmt.Sprintf(`{"id":%d, status: %s}`, orderMsg.ID, orderMsg.Status.ToString())),
+		Key:       sarama.StringEncoder(fmt.Sprint(orderMsg.ID)),
 		Timestamp: time.Now(),
 		Headers: []sarama.RecordHeader{
 			{
 				Key:   []byte("status-changed-header"),
-				Value: []byte(status.ToString()),
+				Value: []byte(orderMsg.Status.ToString()),
 			},
 		},
 	}
@@ -50,6 +53,6 @@ func (s *orderSender) SendOrderOrderStatusEvent(id int64, status models.OrderSta
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Printf("order id: %d, partition: %d, offset: %d", id, partition, offset)
+	log.Printf("order id: %d, partition: %d, offset: %d", orderMsg.ID, partition, offset)
 	return nil
 }
