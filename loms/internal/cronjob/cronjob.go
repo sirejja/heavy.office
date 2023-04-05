@@ -1,34 +1,35 @@
 package cronjob
 
 import (
-	"context"
 	"log"
-	"route256/loms/internal/repositories/order_repo"
-	"route256/loms/internal/services/cancel_orders_cron"
-	"route256/loms/internal/services/orders"
+	"route256/loms/internal/services/cron/cancel_orders"
+	"route256/loms/internal/services/cron/outbox"
 
 	"github.com/robfig/cron"
 )
 
 type CronJob struct {
-	cronjob          *cron.Cron
-	orders           orders.IOrdersService
-	orderRepo        order_repo.IOrderRepo
-	specCancelOrders string
+	cronjob         *cron.Cron
+	cancelOrdersJob *cancel_orders.CancelOrdersJob
+	outboxJob       *outbox.OutboxJob
 }
 
-func New(orders orders.IOrdersService, orderRepo order_repo.IOrderRepo, specCancelOrders string) CronJob {
-	cronjob := cron.New()
-
-	return CronJob{cronjob: cronjob, orders: orders, orderRepo: orderRepo, specCancelOrders: specCancelOrders}
+func New(cancelOrdersJob *cancel_orders.CancelOrdersJob, outboxJob *outbox.OutboxJob) CronJob {
+	return CronJob{
+		cronjob:         cron.New(),
+		cancelOrdersJob: cancelOrdersJob,
+		outboxJob:       outboxJob,
+	}
 }
 
-func (c *CronJob) Start(ctx context.Context) {
+func (c *CronJob) Start() {
 	op := "CronJob.Start"
 
-	cancelOrdersCron := cancel_orders_cron.New(ctx, c.orders, c.orderRepo)
-
-	err := c.cronjob.AddJob(c.specCancelOrders, cancelOrdersCron)
+	err := c.cronjob.AddJob(c.cancelOrdersJob.SpecCancelOrders, c.cancelOrdersJob)
+	if err != nil {
+		log.Printf("%s: %v", op, err)
+	}
+	err = c.cronjob.AddJob(c.outboxJob.SpecOutbox, c.outboxJob)
 	if err != nil {
 		log.Printf("%s: %v", op, err)
 	}

@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 	"fmt"
+	"route256/loms/internal/kafka/outbox_producer"
 	"route256/loms/internal/models"
 )
 
@@ -14,8 +15,18 @@ func (o *Order) CancelOrder(ctx context.Context, orderID int64) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
+
+		err = o.outboxRepo.ProcessOutboxTaskCreation(
+			ctx,
+			o.cfg.Kafka.Topics.OrderStatus,
+			outbox_producer.OrderStatusMsg{ID: orderID, Status: models.OrderStatusCancelled.ToString()},
+		)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
 		return nil
 	})
+
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

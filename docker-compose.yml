@@ -102,9 +102,9 @@ services:
       - net
     env_file:
       - ./loms/.env
-
-  # notification:
-  #   image: notification
-  #   build: ./notification
-  #   ports:
-  #     - "8082:8082"
+  notification:
+    image: notifications
+    build: ./notifications/
+    networks:
+     - net
+    restart: unless-stopped

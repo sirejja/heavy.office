@@ -1,4 +1,4 @@
-package cancel_orders_cron
+package cancel_orders
 
 import (
 	"context"
@@ -14,31 +14,33 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type CancelOrdersCronService struct {
-	orders    orders.IOrdersService
-	orderRepo order_repo.IOrderRepo
-	ctx       context.Context
+type CancelOrdersJob struct {
+	orders           orders.IOrdersService
+	orderRepo        order_repo.IOrderRepo
+	ctx              context.Context
+	SpecCancelOrders string
 }
 
 type ICancelOrdersCron interface {
 	cron.Job
 }
 
-var _ ICancelOrdersCron = (*CancelOrdersCronService)(nil)
+var _ ICancelOrdersCron = (*CancelOrdersJob)(nil)
 
-func New(ctx context.Context, orders orders.IOrdersService, orderRepo order_repo.IOrderRepo) *CancelOrdersCronService {
-	return &CancelOrdersCronService{
-		ctx:       ctx,
-		orders:    orders,
-		orderRepo: orderRepo,
+func New(ctx context.Context, orders orders.IOrdersService, orderRepo order_repo.IOrderRepo, specCancelOrders string) *CancelOrdersJob {
+	return &CancelOrdersJob{
+		ctx:              ctx,
+		orders:           orders,
+		orderRepo:        orderRepo,
+		SpecCancelOrders: specCancelOrders,
 	}
 }
 
-func (r *CancelOrdersCronService) Run() {
-	op := "CancelOrdersCronService.Run"
+func (o *CancelOrdersJob) Run() {
+	op := "CancelOrdersJob.Run"
 	log.Printf("%s started at %s", op, time.Now().Format("2006-01-02 15:04"))
 
-	orderIDs, err := r.orderRepo.GetOrdersForCancel(r.ctx)
+	orderIDs, err := o.orderRepo.GetOrdersForCancel(o.ctx)
 	if err != nil {
 		log.Printf("%s: %v", op, err)
 		return
@@ -49,13 +51,13 @@ func (r *CancelOrdersCronService) Run() {
 	for _, orderID := range orderIDs {
 		orderID := orderID
 		callbacks = append(callbacks, func(struct{}) *worker_pool.OutSink[struct{}] {
-			err = limiter.Wait(r.ctx)
+			err = limiter.Wait(o.ctx)
 			if err != nil {
 				log.Printf("%s: %v", op, err)
 				return &worker_pool.OutSink[struct{}]{Res: struct{}{}, Err: fmt.Errorf("%s: %w", op, err)}
 			}
 
-			err = r.orders.CancelOrder(r.ctx, orderID)
+			err = o.orders.CancelOrder(o.ctx, orderID)
 			if err != nil {
 				log.Printf("%s: %v", op, err)
 				return &worker_pool.OutSink[struct{}]{Res: struct{}{}, Err: fmt.Errorf("%s: %w", op, err)}
@@ -65,7 +67,7 @@ func (r *CancelOrdersCronService) Run() {
 	}
 
 	amountWorkers := 20
-	batchingPool, workerCh := worker_pool.NewPool[struct{}, struct{}](r.ctx, amountWorkers)
+	batchingPool, workerCh := worker_pool.NewPool[struct{}, struct{}](o.ctx, amountWorkers)
 
 	var wg sync.WaitGroup
 	tasks := make([]worker_pool.Task[struct{}, struct{}], 0, len(orderIDs))
@@ -77,7 +79,7 @@ func (r *CancelOrdersCronService) Run() {
 		})
 	}
 
-	batchingPool.Submit(r.ctx, tasks)
+	batchingPool.Submit(o.ctx, tasks)
 
 	go func() {
 		for range workerCh {

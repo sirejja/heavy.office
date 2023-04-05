@@ -7,13 +7,18 @@ import (
 	"os"
 	"os/signal"
 	"route256/libs/interceptors"
+	kafka "route256/libs/kafka/producer"
 	"route256/libs/transactor"
 	v1 "route256/loms/internal/api/v1"
 	"route256/loms/internal/config"
 	"route256/loms/internal/cronjob"
+	"route256/loms/internal/kafka/outbox_producer"
 	"route256/loms/internal/repositories/order_repo"
+	"route256/loms/internal/repositories/outbox_repo"
 	"route256/loms/internal/repositories/warehouse_orders_repo"
 	"route256/loms/internal/repositories/warehouse_repo"
+	cancel_orders_cron "route256/loms/internal/services/cron/cancel_orders"
+	"route256/loms/internal/services/cron/outbox"
 	"route256/loms/internal/services/orders"
 	"route256/loms/internal/services/warehouse"
 	desc "route256/loms/pkg/v1/api"
@@ -24,8 +29,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
-
-const port = ":8081"
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -55,13 +58,28 @@ func main() {
 	warehouseRepo := warehouse_repo.New(transactionManager)
 	ordersRepo := order_repo.New(transactionManager)
 	warehouseOrdersRepo := warehouse_orders_repo.New(transactionManager)
+	outboxRepo := outbox_repo.New(transactionManager)
 
-	ordersProcessor := orders.New(ordersRepo, warehouseRepo, warehouseOrdersRepo, transactionManager)
+	producer, err := kafka.NewSyncProducer(cfg.Kafka.Brokers)
+	if err != nil {
+		log.Fatal("Unable to connect to kafka", err)
+	}
+	defer producer.Close()
+
+	ordersProcessor := orders.New(
+		ordersRepo,
+		warehouseRepo,
+		warehouseOrdersRepo,
+		outboxRepo,
+		transactionManager,
+		cfg,
+	)
+
 	warehouseProcessor := warehouse.New(warehouseRepo, transactionManager)
 
-	lis, err := net.Listen("tcp", port)
+	lis, err := net.Listen("tcp", cfg.Web.Port)
 	if err != nil {
-		log.Fatalf("failed to connect to listen %v: %v", port, err)
+		log.Fatalf("failed to connect to listen %v: %v", cfg.Web.Port, err)
 	}
 
 	server := grpc.NewServer(
@@ -76,11 +94,14 @@ func main() {
 
 	// cronjob
 	log.Println("CronJob starting...")
-	cronJob := cronjob.New(ordersProcessor, ordersRepo, cfg.CancelOrdersCronPeriod)
-	cronJob.Start(ctx)
+	cancelOrdersJob := cancel_orders_cron.New(ctx, ordersProcessor, ordersRepo, cfg.CancelOrdersCronPeriod)
+	outboxCron := outbox.New(ctx, outbox_producer.New(producer), outboxRepo, cfg.OutboxCronPeriod)
+
+	cronJob := cronjob.New(cancelOrdersJob, outboxCron)
+	cronJob.Start()
 	log.Println("CronJob started")
 
-	log.Println("grpc server listening at", port)
+	log.Println("grpc server listening at", cfg.Web.Port)
 	if err = server.Serve(lis); err != nil {
 		log.Fatal("failed to serve", err)
 	}

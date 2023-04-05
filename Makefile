@@ -5,7 +5,7 @@ build-all:
 	 cd notifications && GOOS=linux make build
 
 run-all: build-all
-	sudo docker compose up --force-recreate --build
+	sudo docker compose -f docker-compose.yml up --force-recreate --build
 
 precommit:
 	cd checkout && make precommit
@@ -15,3 +15,6 @@ precommit:
 prepare-grpc-deps:
 	cd checkout && make prepare-grpc-deps
 	cd loms && make prepare-grpc-deps
+
+run-kafka:
+	sudo docker compose -f docker-compose-kafka.yml up  --force-recreate --build

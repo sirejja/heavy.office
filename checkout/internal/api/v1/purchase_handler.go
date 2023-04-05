@@ -9,7 +9,6 @@ import (
 
 func ValidatePurchase(r *desc.PurchaseRequest) error {
 	if r.GetUser() == 0 {
-		fmt.Println(1111)
 		return models.ErrEmptyUser
 	}
 	return nil

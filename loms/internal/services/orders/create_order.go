@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 	"fmt"
+	"route256/loms/internal/kafka/outbox_producer"
 	"route256/loms/internal/models"
 )
 
@@ -34,7 +35,16 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	orderID, err := o.ordersRepo.CreateOrder(ctx, user, models.OrderStatusNew.ToString())
+	orderID, err := o.ordersRepo.CreateOrder(ctx, user, models.OrderStatusNew)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = o.outboxRepo.ProcessOutboxTaskCreation(
+		ctx,
+		o.cfg.Kafka.Topics.OrderStatus,
+		outbox_producer.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusCancelled.ToString()},
+	)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
@@ -44,11 +54,31 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 	_, err = o.ordersRepo.UpdateOrderStatus(ctx, int64(orderID), models.OrderStatusWaitPayment)
+
 	if err != nil {
 		_, errStatus := o.ordersRepo.UpdateOrderStatus(ctx, int64(orderID), models.OrderStatusFailed)
 		if errStatus != nil {
 			return 0, fmt.Errorf("%s: %w", op, errStatus)
 		}
+
+		err = o.outboxRepo.ProcessOutboxTaskCreation(
+			ctx,
+			o.cfg.Kafka.Topics.OrderStatus,
+			outbox_producer.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusFailed.ToString()},
+		)
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = o.outboxRepo.ProcessOutboxTaskCreation(
+		ctx,
+		o.cfg.Kafka.Topics.OrderStatus,
+		outbox_producer.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusWaitPayment.ToString()},
+	)
+	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -58,6 +88,16 @@ func (o *Order) processOrderCreation(ctx context.Context, user int64, items []mo
 		if err != nil {
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
+
+		err = o.outboxRepo.ProcessOutboxTaskCreation(
+			ctx,
+			o.cfg.Kafka.Topics.OrderStatus,
+			outbox_producer.OrderStatusMsg{ID: int64(orderID), Status: models.OrderStatusFailed.ToString()},
+		)
+		if err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
