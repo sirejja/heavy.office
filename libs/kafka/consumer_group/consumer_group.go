@@ -53,6 +53,7 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 				session.MarkMessage(message, "")
 			} else {
 				log.Printf("Unbinded topic recieved")
+				session.MarkMessage(message, "")
 			}
 
 		// Should return when `session.Context()` is done.
