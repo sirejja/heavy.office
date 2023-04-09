@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"route256/libs/logger"
+	"route256/libs/tracer"
 	"route256/notifications/internal/config"
 	"route256/notifications/internal/kafka"
 	"route256/notifications/internal/services/orders"
@@ -12,39 +15,48 @@ import (
 	"syscall"
 
 	"github.com/Shopify/sarama"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 )
 
 func main() {
 	keepRunning := true
-	log.Println("Starting a new Sarama consumer")
 
 	cfg := config.New()
 	if err := cfg.Init(); err != nil {
-		log.Fatal("config init", err)
+		panic("config init")
 	}
 
+	logger.Init(cfg.Env == config.EnvDev)
+	tracer.InitGlobalTracer(cfg.ServiceName)
+
+	logger.Info("Starting a new Sarama consumer")
 	consumer, kafkaCfg := kafka.NewConsumerGroup(cfg, orders.New())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	client, err := sarama.NewConsumerGroup(cfg.Kafka.Brokers, cfg.Kafka.GroupName, kafkaCfg)
 	if err != nil {
-		log.Panicf("Error creating consumer group client: %v", err)
+		logger.Fatal("Error creating consumer group client", zap.Error(err))
 	}
 
 	consumptionIsPaused := false
+
+	// prometheus
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.MetricsPort), nil); err != nil {
+			logger.Fatal("failed to serve", zap.Error(err))
+		}
+	}()
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for {
-			// `Consume` should be called inside an infinite loop, when a
-			// server-side rebalance happens, the consumer session will need to be
-			// recreated to get the new claims
 			if err := client.Consume(ctx, []string{cfg.Kafka.Topics.OrderStatus.Topic}, &consumer); err != nil {
-				log.Panicf("Error from consumer: %v", err)
+				logger.Fatal("Error from consumer", zap.Error(err))
 			}
-			// check if context was cancelled, signaling that the consumer should stop
 			if ctx.Err() != nil {
 				return
 			}
@@ -52,7 +64,7 @@ func main() {
 	}()
 
 	<-consumer.Ready() // Await till the consumer has been set up
-	log.Println("Sarama consumer up and running!...")
+	logger.Info("Sarama consumer up and running!...")
 
 	sigusr1 := make(chan os.Signal, 1)
 	signal.Notify(sigusr1, syscall.SIGUSR1)
@@ -63,31 +75,19 @@ func main() {
 	for keepRunning {
 		select {
 		case <-ctx.Done():
-			log.Println("terminating: context cancelled")
+			logger.Info("terminating: context cancelled")
 			keepRunning = false
 		case <-sigterm:
-			log.Println("terminating: via signal")
+			logger.Info("terminating: via signal")
 			keepRunning = false
 		case <-sigusr1:
-			toggleConsumptionFlow(client, &consumptionIsPaused)
+			consumer.ToggleConsumptionFlow(client, &consumptionIsPaused)
 		}
 	}
 
 	cancel()
 	wg.Wait()
 	if err = client.Close(); err != nil {
-		log.Panicf("Error closing client: %v", err)
+		logger.Error("Error closing client: %v", zap.Error(err))
 	}
-}
-
-func toggleConsumptionFlow(client sarama.ConsumerGroup, isPaused *bool) {
-	if *isPaused {
-		client.ResumeAll()
-		log.Println("Resuming consumption")
-	} else {
-		client.PauseAll()
-		log.Println("Pausing consumption")
-	}
-
-	*isPaused = !*isPaused
 }

@@ -17,4 +17,11 @@ prepare-grpc-deps:
 	cd loms && make prepare-grpc-deps
 
 run-kafka:
-	sudo docker compose -f docker-compose-kafka.yml up  --force-recreate --build
+	sudo docker compose -f docker-compose-kafka.yml up --build
+
+logs:
+	mkdir -p logs/data
+	touch logs/data/log.txt
+	touch logs/data/offsets.yaml
+	sudo chmod -R 777 logs/data
+	cd graylog && sudo docker compose up

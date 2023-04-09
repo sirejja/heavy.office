@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"route256/libs/interceptors"
 	kafka "route256/libs/kafka/producer"
+	"route256/libs/logger"
+	"route256/libs/tracer"
 	"route256/libs/transactor"
 	v1 "route256/loms/internal/api/v1"
 	"route256/loms/internal/config"
@@ -25,7 +28,10 @@ import (
 	"time"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpcPrometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -36,12 +42,15 @@ func main() {
 
 	cfg := config.New()
 	if err := cfg.Init(); err != nil {
-		log.Fatal("config init", err)
+		panic("config init")
 	}
+
+	logger.Init(cfg.Env == config.EnvDev)
+	tracer.InitGlobalTracer(cfg.ServiceName)
 
 	postgresConfig, err := pgxpool.ParseConfig(cfg.Storage.PostgresDSN)
 	if err != nil {
-		log.Fatal("can not parse postgres DSN", err)
+		logger.Fatal("can not parse postgres DSN", zap.Error(err))
 	}
 	postgresConfig.MaxConnIdleTime = time.Minute
 	postgresConfig.MaxConnLifetime = time.Hour
@@ -50,7 +59,7 @@ func main() {
 
 	pool, err := pgxpool.ConnectConfig(ctx, postgresConfig)
 	if err != nil {
-		log.Fatal("Unable to connect to database", err)
+		logger.Fatal("Unable to connect to database", zap.Error(err))
 	}
 	defer pool.Close()
 	transactionManager := transactor.New(pool)
@@ -62,7 +71,7 @@ func main() {
 
 	producer, err := kafka.NewSyncProducer(cfg.Kafka.Brokers)
 	if err != nil {
-		log.Fatal("Unable to connect to kafka", err)
+		logger.Fatal("Unable to connect to kafka", zap.Error(err))
 	}
 	defer producer.Close()
 
@@ -77,32 +86,45 @@ func main() {
 
 	warehouseProcessor := warehouse.New(warehouseRepo, transactionManager)
 
-	lis, err := net.Listen("tcp", cfg.Web.Port)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.WebPort))
 	if err != nil {
-		log.Fatalf("failed to connect to listen %v: %v", cfg.Web.Port, err)
+		logger.Fatal(fmt.Sprintf("failed to connect to listen %v", cfg.WebPort), zap.Error(err))
 	}
 
+	interceptors.InitMetricsInterceptor(cfg.ServiceName)
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			grpcMiddleware.ChainUnaryServer(
 				interceptors.LoggingInterceptor,
+				interceptors.TracingInterceptor,
+				interceptors.MetricsInterceptor,
+				grpcPrometheus.UnaryServerInterceptor,
 			),
 		),
 	)
 	reflection.Register(server)
 	desc.RegisterLomsServer(server, v1.New(warehouseProcessor, ordersProcessor))
 
+	// prometheus
+	grpcPrometheus.Register(server)
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", cfg.MetricsPort), nil); err != nil {
+			logger.Fatal("failed to serve", zap.Error(err))
+		}
+	}()
+
 	// cronjob
-	log.Println("CronJob starting...")
+	logger.Info("CronJob starting...")
 	cancelOrdersJob := cancel_orders_cron.New(ctx, ordersProcessor, ordersRepo, cfg.CancelOrdersCronPeriod)
 	outboxCron := outbox.New(ctx, outbox_producer.New(producer), outboxRepo, cfg.OutboxCronPeriod)
 
 	cronJob := cronjob.New(cancelOrdersJob, outboxCron)
 	cronJob.Start()
-	log.Println("CronJob started")
+	logger.Info("CronJob started")
 
-	log.Println("grpc server listening at", cfg.Web.Port)
+	logger.Info("grpc server listening at", zap.Int("port", cfg.WebPort))
 	if err = server.Serve(lis); err != nil {
-		log.Fatal("failed to serve", err)
+		logger.Fatal("failed to serve", zap.Error(err))
 	}
 }

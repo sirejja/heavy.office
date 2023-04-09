@@ -36,8 +36,8 @@ type ICartsProductsRepoMock struct {
 	beforeGetCartProductCounter uint64
 	GetCartProductMock          mICartsProductsRepoMockGetCartProduct
 
-	funcGetCartProductCount          func(ctx context.Context, SKU uint32) (u1 uint32, err error)
-	inspectFuncGetCartProductCount   func(ctx context.Context, SKU uint32)
+	funcGetCartProductCount          func(ctx context.Context, SKU uint32, cartID uint64) (u1 uint32, err error)
+	inspectFuncGetCartProductCount   func(ctx context.Context, SKU uint32, cartID uint64)
 	afterGetCartProductCountCounter  uint64
 	beforeGetCartProductCountCounter uint64
 	GetCartProductCountMock          mICartsProductsRepoMockGetCartProductCount
@@ -756,8 +756,9 @@ type ICartsProductsRepoMockGetCartProductCountExpectation struct {
 
 // ICartsProductsRepoMockGetCartProductCountParams contains parameters of the ICartsProductsRepo.GetCartProductCount
 type ICartsProductsRepoMockGetCartProductCountParams struct {
-	ctx context.Context
-	SKU uint32
+	ctx    context.Context
+	SKU    uint32
+	cartID uint64
 }
 
 // ICartsProductsRepoMockGetCartProductCountResults contains results of the ICartsProductsRepo.GetCartProductCount
@@ -767,7 +768,7 @@ type ICartsProductsRepoMockGetCartProductCountResults struct {
 }
 
 // Expect sets up expected params for ICartsProductsRepo.GetCartProductCount
-func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Expect(ctx context.Context, SKU uint32) *mICartsProductsRepoMockGetCartProductCount {
+func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Expect(ctx context.Context, SKU uint32, cartID uint64) *mICartsProductsRepoMockGetCartProductCount {
 	if mmGetCartProductCount.mock.funcGetCartProductCount != nil {
 		mmGetCartProductCount.mock.t.Fatalf("ICartsProductsRepoMock.GetCartProductCount mock is already set by Set")
 	}
@@ -776,7 +777,7 @@ func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Expect(
 		mmGetCartProductCount.defaultExpectation = &ICartsProductsRepoMockGetCartProductCountExpectation{}
 	}
 
-	mmGetCartProductCount.defaultExpectation.params = &ICartsProductsRepoMockGetCartProductCountParams{ctx, SKU}
+	mmGetCartProductCount.defaultExpectation.params = &ICartsProductsRepoMockGetCartProductCountParams{ctx, SKU, cartID}
 	for _, e := range mmGetCartProductCount.expectations {
 		if minimock.Equal(e.params, mmGetCartProductCount.defaultExpectation.params) {
 			mmGetCartProductCount.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmGetCartProductCount.defaultExpectation.params)
@@ -787,7 +788,7 @@ func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Expect(
 }
 
 // Inspect accepts an inspector function that has same arguments as the ICartsProductsRepo.GetCartProductCount
-func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Inspect(f func(ctx context.Context, SKU uint32)) *mICartsProductsRepoMockGetCartProductCount {
+func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Inspect(f func(ctx context.Context, SKU uint32, cartID uint64)) *mICartsProductsRepoMockGetCartProductCount {
 	if mmGetCartProductCount.mock.inspectFuncGetCartProductCount != nil {
 		mmGetCartProductCount.mock.t.Fatalf("Inspect function is already set for ICartsProductsRepoMock.GetCartProductCount")
 	}
@@ -811,7 +812,7 @@ func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Return(
 }
 
 // Set uses given function f to mock the ICartsProductsRepo.GetCartProductCount method
-func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Set(f func(ctx context.Context, SKU uint32) (u1 uint32, err error)) *ICartsProductsRepoMock {
+func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Set(f func(ctx context.Context, SKU uint32, cartID uint64) (u1 uint32, err error)) *ICartsProductsRepoMock {
 	if mmGetCartProductCount.defaultExpectation != nil {
 		mmGetCartProductCount.mock.t.Fatalf("Default expectation is already set for the ICartsProductsRepo.GetCartProductCount method")
 	}
@@ -826,14 +827,14 @@ func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) Set(f f
 
 // When sets expectation for the ICartsProductsRepo.GetCartProductCount which will trigger the result defined by the following
 // Then helper
-func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) When(ctx context.Context, SKU uint32) *ICartsProductsRepoMockGetCartProductCountExpectation {
+func (mmGetCartProductCount *mICartsProductsRepoMockGetCartProductCount) When(ctx context.Context, SKU uint32, cartID uint64) *ICartsProductsRepoMockGetCartProductCountExpectation {
 	if mmGetCartProductCount.mock.funcGetCartProductCount != nil {
 		mmGetCartProductCount.mock.t.Fatalf("ICartsProductsRepoMock.GetCartProductCount mock is already set by Set")
 	}
 
 	expectation := &ICartsProductsRepoMockGetCartProductCountExpectation{
 		mock:   mmGetCartProductCount.mock,
-		params: &ICartsProductsRepoMockGetCartProductCountParams{ctx, SKU},
+		params: &ICartsProductsRepoMockGetCartProductCountParams{ctx, SKU, cartID},
 	}
 	mmGetCartProductCount.expectations = append(mmGetCartProductCount.expectations, expectation)
 	return expectation
@@ -846,15 +847,15 @@ func (e *ICartsProductsRepoMockGetCartProductCountExpectation) Then(u1 uint32, e
 }
 
 // GetCartProductCount implements carts_products_repo.ICartsProductsRepo
-func (mmGetCartProductCount *ICartsProductsRepoMock) GetCartProductCount(ctx context.Context, SKU uint32) (u1 uint32, err error) {
+func (mmGetCartProductCount *ICartsProductsRepoMock) GetCartProductCount(ctx context.Context, SKU uint32, cartID uint64) (u1 uint32, err error) {
 	mm_atomic.AddUint64(&mmGetCartProductCount.beforeGetCartProductCountCounter, 1)
 	defer mm_atomic.AddUint64(&mmGetCartProductCount.afterGetCartProductCountCounter, 1)
 
 	if mmGetCartProductCount.inspectFuncGetCartProductCount != nil {
-		mmGetCartProductCount.inspectFuncGetCartProductCount(ctx, SKU)
+		mmGetCartProductCount.inspectFuncGetCartProductCount(ctx, SKU, cartID)
 	}
 
-	mm_params := &ICartsProductsRepoMockGetCartProductCountParams{ctx, SKU}
+	mm_params := &ICartsProductsRepoMockGetCartProductCountParams{ctx, SKU, cartID}
 
 	// Record call args
 	mmGetCartProductCount.GetCartProductCountMock.mutex.Lock()
@@ -871,7 +872,7 @@ func (mmGetCartProductCount *ICartsProductsRepoMock) GetCartProductCount(ctx con
 	if mmGetCartProductCount.GetCartProductCountMock.defaultExpectation != nil {
 		mm_atomic.AddUint64(&mmGetCartProductCount.GetCartProductCountMock.defaultExpectation.Counter, 1)
 		mm_want := mmGetCartProductCount.GetCartProductCountMock.defaultExpectation.params
-		mm_got := ICartsProductsRepoMockGetCartProductCountParams{ctx, SKU}
+		mm_got := ICartsProductsRepoMockGetCartProductCountParams{ctx, SKU, cartID}
 		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
 			mmGetCartProductCount.t.Errorf("ICartsProductsRepoMock.GetCartProductCount got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
 		}
@@ -883,9 +884,9 @@ func (mmGetCartProductCount *ICartsProductsRepoMock) GetCartProductCount(ctx con
 		return (*mm_results).u1, (*mm_results).err
 	}
 	if mmGetCartProductCount.funcGetCartProductCount != nil {
-		return mmGetCartProductCount.funcGetCartProductCount(ctx, SKU)
+		return mmGetCartProductCount.funcGetCartProductCount(ctx, SKU, cartID)
 	}
-	mmGetCartProductCount.t.Fatalf("Unexpected call to ICartsProductsRepoMock.GetCartProductCount. %v %v", ctx, SKU)
+	mmGetCartProductCount.t.Fatalf("Unexpected call to ICartsProductsRepoMock.GetCartProductCount. %v %v %v", ctx, SKU, cartID)
 	return
 }
 

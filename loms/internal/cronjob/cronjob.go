@@ -1,11 +1,13 @@
 package cronjob
 
 import (
-	"log"
+	"fmt"
+	"route256/libs/logger"
 	"route256/loms/internal/services/cron/cancel_orders"
 	"route256/loms/internal/services/cron/outbox"
 
 	"github.com/robfig/cron"
+	"go.uber.org/zap"
 )
 
 type CronJob struct {
@@ -27,11 +29,11 @@ func (c *CronJob) Start() {
 
 	err := c.cronjob.AddJob(c.cancelOrdersJob.SpecCancelOrders, c.cancelOrdersJob)
 	if err != nil {
-		log.Printf("%s: %v", op, err)
+		logger.Error(op, zap.Error(fmt.Errorf("%s: %v", op, err)))
 	}
 	err = c.cronjob.AddJob(c.outboxJob.SpecOutbox, c.outboxJob)
 	if err != nil {
-		log.Printf("%s: %v", op, err)
+		logger.Error(op, zap.Error(fmt.Errorf("%s: %v", op, err)))
 	}
 
 	c.cronjob.Start()

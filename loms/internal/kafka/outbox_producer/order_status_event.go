@@ -2,10 +2,11 @@ package outbox_producer
 
 import (
 	"fmt"
-	"log"
+	"route256/libs/logger"
 	"time"
 
 	"github.com/Shopify/sarama"
+	"go.uber.org/zap"
 )
 
 type OrderStatusMsg struct {
@@ -35,7 +36,10 @@ func (p *Producer) sendOrderOrderStatusEvent(topic string, orderMsg OrderStatusM
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Printf("order id: %d, partition: %d, offset: %d", orderMsg.ID, partition, offset)
-
+	logger.Info("Message claimed order_status changed",
+		zap.Int64("order_id", orderMsg.ID),
+		zap.Int32("partition", partition),
+		zap.Int64("offset", offset),
+	)
 	return nil
 }

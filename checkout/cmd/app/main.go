@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net"
+	"net/http"
 	v1 "route256/checkout/internal/api/v1"
 	"route256/checkout/internal/clients/grpc/loms"
 	"route256/checkout/internal/clients/grpc/products"
@@ -13,29 +14,38 @@ import (
 	"route256/checkout/internal/services/cart"
 	desc "route256/checkout/pkg/v1/api"
 	"route256/libs/interceptors"
+	"route256/libs/logger"
+	"route256/libs/tracer"
 	"route256/libs/transactor"
 	"time"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpcPrometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
-const port = ":8080"
-
 func main() {
+
 	cfg := config.New()
 	if err := cfg.Init(); err != nil {
-		log.Fatal("config init", err)
+		panic(fmt.Sprintf("config init %v", err))
 	}
+
+	logger.Init(cfg.Env == config.EnvDev)
+	tracer.InitGlobalTracer(cfg.ServiceName)
 
 	// db init
 	postgresConfig, err := pgxpool.ParseConfig(cfg.Storage.PostgresDSN)
 	if err != nil {
-		log.Fatal("can not parse postgres DSN", err)
+		logger.Fatal("can not parse postgres DSN", zap.Error(err))
 	}
 	postgresConfig.MaxConnIdleTime = time.Minute
 	postgresConfig.MaxConnLifetime = time.Hour
@@ -44,7 +54,7 @@ func main() {
 
 	pool, err := pgxpool.ConnectConfig(context.Background(), postgresConfig)
 	if err != nil {
-		log.Fatal("Unable to connect to database", err)
+		logger.Fatal("Unable to connect to database", zap.Error(err))
 	}
 	defer pool.Close()
 	transactionManager := transactor.New(pool)
@@ -53,49 +63,72 @@ func main() {
 	cartsProductsRepo := carts_products_repo.New(transactionManager)
 
 	// clients init
-	lomsConn, err := grpc.Dial(cfg.Services.Loms.URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	lomsConn, err := grpc.Dial(
+		cfg.Services.Loms.URL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
+	)
 	if err != nil {
-		log.Fatal("failed to connect to lomsClient", err)
+		logger.Fatal("failed to connect to lomsClient", zap.Error(err))
 	}
 	defer lomsConn.Close()
 
 	lomsClient, err := loms.New(lomsConn)
 	if err != nil {
-		log.Fatal("failed to create lomsClient", err)
+		logger.Fatal("failed to create lomsClient", zap.Error(err))
 	}
 
-	productsServiceConn, err := grpc.Dial(cfg.Services.Products.URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	productsServiceConn, err := grpc.Dial(
+		cfg.Services.Products.URL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer())),
+	)
 	if err != nil {
-		log.Fatal("failed to connect to productsClient", err)
+		logger.Fatal("failed to connect to productsClient", zap.Error(err))
 	}
 	defer productsServiceConn.Close()
 
 	productsLimiter := rate.NewLimiter(rate.Every(time.Second/100), 10)
 	productsClient, err := products.New(productsServiceConn, cfg.Services.Products.Token)
 	if err != nil {
-		log.Fatal("failed to create productsClient", err)
+		logger.Fatal("failed to create productsClient", zap.Error(err))
 	}
 
 	// business logic init
 	cartProcessor := cart.New(lomsClient, productsClient, cartsRepo, cartsProductsRepo, transactionManager, productsLimiter)
 
 	// sever init
-	lis, err := net.Listen("tcp", port)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.WebPort))
 	if err != nil {
-		log.Fatalf("failed to connect to listen %v: %v", port, err)
+		logger.Fatal(fmt.Sprintf("failed to connect to listen %d", cfg.WebPort), zap.Error(err))
 	}
+
+	interceptors.InitMetricsInterceptor(cfg.ServiceName)
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			grpcMiddleware.ChainUnaryServer(
 				interceptors.LoggingInterceptor,
+				interceptors.TracingInterceptor,
+				interceptors.MetricsInterceptor,
+				grpcPrometheus.UnaryServerInterceptor,
 			),
 		),
 	)
 
 	reflection.Register(server)
 	desc.RegisterCheckoutServer(server, v1.New(cartProcessor))
-	log.Println("grpc server listening at", port)
+
+	// prometheus
+	grpcPrometheus.Register(server)
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if err = http.ListenAndServe(fmt.Sprintf(":%d", cfg.MetricsPort), nil); err != nil {
+			logger.Fatal("failed to serve", zap.Error(err))
+		}
+	}()
+
+	logger.Info("grpc server listening at", zap.Int("port", cfg.WebPort))
 	if err = server.Serve(lis); err != nil {
-		log.Fatal("failed to serve", err)
+		logger.Fatal("failed to serve", zap.Error(err))
 	}
 }

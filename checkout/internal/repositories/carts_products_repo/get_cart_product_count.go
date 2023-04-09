@@ -9,7 +9,7 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 )
 
-func (c *cartsProductsRepo) GetCartProductCount(ctx context.Context, SKU uint32) (uint32, error) {
+func (c *cartsProductsRepo) GetCartProductCount(ctx context.Context, SKU uint32, cartID uint64) (uint32, error) {
 	op := "cartsProductsRepo.GetCartsProductsCount"
 	db := c.db.GetQueryEngine(ctx)
 
@@ -21,6 +21,7 @@ func (c *cartsProductsRepo) GetCartProductCount(ctx context.Context, SKU uint32)
 		From(c.name).
 		Where(sq.Eq{"deleted_at": nil}).
 		Where(sq.Eq{"sku": SKU}).
+		Where(sq.Eq{"cart_id": cartID}).
 		PlaceholderFormat(sq.Dollar)
 
 	sql, args, err := query.ToSql()

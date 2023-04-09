@@ -3,7 +3,7 @@ package cancel_orders
 import (
 	"context"
 	"fmt"
-	"log"
+	"route256/libs/logger"
 	"route256/libs/worker_pool"
 	"route256/loms/internal/repositories/order_repo"
 	"route256/loms/internal/services/orders"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/robfig/cron"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -38,11 +39,11 @@ func New(ctx context.Context, orders orders.IOrdersService, orderRepo order_repo
 
 func (o *CancelOrdersJob) Run() {
 	op := "CancelOrdersJob.Run"
-	log.Printf("%s started at %s", op, time.Now().Format("2006-01-02 15:04"))
+	logger.Info("cron started", zap.String("op", op), zap.Time("timestamp", time.Now()))
 
 	orderIDs, err := o.orderRepo.GetOrdersForCancel(o.ctx)
 	if err != nil {
-		log.Printf("%s: %v", op, err)
+		logger.Error(op, zap.Error(fmt.Errorf("%s: %v", op, err)))
 		return
 	}
 	limiter := rate.NewLimiter(rate.Every(time.Second/100), 40)
@@ -53,13 +54,13 @@ func (o *CancelOrdersJob) Run() {
 		callbacks = append(callbacks, func(struct{}) *worker_pool.OutSink[struct{}] {
 			err = limiter.Wait(o.ctx)
 			if err != nil {
-				log.Printf("%s: %v", op, err)
+				logger.Error(op, zap.Error(fmt.Errorf("%s: %v", op, err)))
 				return &worker_pool.OutSink[struct{}]{Res: struct{}{}, Err: fmt.Errorf("%s: %w", op, err)}
 			}
 
 			err = o.orders.CancelOrder(o.ctx, orderID)
 			if err != nil {
-				log.Printf("%s: %v", op, err)
+				logger.Error(op, zap.Error(fmt.Errorf("%s: %v", op, err)))
 				return &worker_pool.OutSink[struct{}]{Res: struct{}{}, Err: fmt.Errorf("%s: %w", op, err)}
 			}
 			return &worker_pool.OutSink[struct{}]{Res: struct{}{}, Err: nil}
@@ -88,5 +89,5 @@ func (o *CancelOrdersJob) Run() {
 	}()
 	wg.Wait()
 	batchingPool.Close()
-	log.Printf("%s finished at %s", op, time.Now().Format("2006-01-02 15:04"))
+	logger.Info("cron finished", zap.String("op", op), zap.Time("timestamp", time.Now()))
 }

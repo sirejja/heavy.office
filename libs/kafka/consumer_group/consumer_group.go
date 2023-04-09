@@ -1,7 +1,8 @@
 package consumer_group
 
 import (
-	"log"
+	"go.uber.org/zap"
+	"route256/libs/logger"
 
 	"github.com/Shopify/sarama"
 )
@@ -48,11 +49,15 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 			topicHandler, ok := consumer.topicHandlerMapping[message.Topic]
 			if ok {
 				if err := topicHandler(message); err != nil {
-					log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
+					logger.Info("Message claimed",
+						zap.ByteString("value", message.Value),
+						zap.Time("timestamp", message.Timestamp),
+						zap.String("topic", message.Topic),
+					)
 				}
 				session.MarkMessage(message, "")
 			} else {
-				log.Printf("Unbinded topic recieved")
+				logger.Warn("Unbinded topic recieved")
 				session.MarkMessage(message, "")
 			}
 
@@ -63,4 +68,16 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 			return nil
 		}
 	}
+}
+
+func (consumer *Consumer) ToggleConsumptionFlow(client sarama.ConsumerGroup, isPaused *bool) {
+	if *isPaused {
+		client.ResumeAll()
+		logger.Warn("Resuming consumption")
+	} else {
+		client.PauseAll()
+		logger.Warn("Pausing consumption")
+	}
+
+	*isPaused = !*isPaused
 }
