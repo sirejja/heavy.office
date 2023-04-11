@@ -10,6 +10,7 @@ services:
     build: ./checkout/
     ports:
       - "8080:8080"
+      - "8090:8090"
     networks:
       - net
     depends_on:
@@ -17,6 +18,8 @@ services:
         condition: service_started
     env_file:
       - ./checkout/.env
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
     restart: unless-stopped
 
   checkout-pgbouncer:
@@ -59,6 +62,7 @@ services:
     build: ./loms/
     ports:
       - "8081:8081"
+      - "8091:8091"
     networks:
       - net
     depends_on:
@@ -66,6 +70,8 @@ services:
         condition: service_started
     env_file:
       - ./loms/.env
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
     restart: unless-stopped
 
   loms-pgbouncer:
@@ -102,9 +108,51 @@ services:
       - net
     env_file:
       - ./loms/.env
+
   notification:
     image: notifications
     build: ./notifications/
+    ports:
+      - "8092:8092"
     networks:
      - net
+    environment:
+     - JAEGER_AGENT_HOST=jaeger
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.18
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686" # web
+      - "14268:14268"
+      - "9411:9411"
+    networks:
+      - net
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml
+    networks:
+      - net
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss
+    ports:
+      - 3000:3000
+    volumes:
+      - ./data:/var/lib/grafana
+    links:
+      - prometheus
+    networks:
+      - net
     restart: unless-stopped

@@ -8,3 +8,5 @@ kafka:
       topic: order_status
   group-name: notifications_group
   balance-strategy: roundrobin
+metrics-port: 8092
+service-name: notificaions

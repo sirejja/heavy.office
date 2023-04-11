@@ -27,7 +27,7 @@ func (c *Cart) AddToCart(ctx context.Context, user int64, sku uint32, count uint
 				return fmt.Errorf("%s: %w", op, err)
 			}
 		} else {
-			productCount, err := c.cartsProductsRepo.GetCartProductCount(ctxTX, sku)
+			productCount, err := c.cartsProductsRepo.GetCartProductCount(ctxTX, sku, cartID)
 			if err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}

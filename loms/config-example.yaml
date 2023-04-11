@@ -5,5 +5,6 @@ kafka:
     - kafka3:29093
   topics:
     order-status: order_status
-web:
-  port: ":8081"
+web-port: 8081
+metrics-port: 8091
+service-name: loms

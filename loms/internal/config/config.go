@@ -9,10 +9,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	EnvDev  = "dev"
+	EnvProd = "prod"
+)
+
 type ConfigStruct struct {
-	Web struct {
-		Port string `yaml:"port"`
-	} `yaml:"web"`
 	Kafka struct {
 		Brokers []string `yaml:"brokers"`
 		Topics  struct {
@@ -22,6 +24,10 @@ type ConfigStruct struct {
 	Storage struct {
 		PostgresDSN string
 	}
+	Env                    string `yaml:"env"`
+	MetricsPort            int    `yaml:"metrics-port"`
+	WebPort                int    `yaml:"web-port"`
+	ServiceName            string `yaml:"service-name"`
 	CancelOrdersCronPeriod string
 	OutboxCronPeriod       string
 }

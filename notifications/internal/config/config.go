@@ -7,6 +7,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	EnvDev  = "dev"
+	EnvProd = "prod"
+)
+
 type ConfigStruct struct {
 	Kafka struct {
 		Brokers []string `yaml:"brokers"`
@@ -18,6 +23,9 @@ type ConfigStruct struct {
 		GroupName       string `yaml:"group-name"`
 		BalanceStrategy string `yaml:"balance-strategy"`
 	} `yaml:"kafka"`
+	Env         string `yaml:"env"`
+	MetricsPort int    `yaml:"metrics-port"`
+	ServiceName string `yaml:"service-name"`
 }
 
 func New() *ConfigStruct {

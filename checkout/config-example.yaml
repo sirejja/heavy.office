@@ -1,7 +1,10 @@
-web_port: 8080
+web-port: 8080
+metrics-port: 8090
+service-name: checkout
+env: prod
 services:
     loms:
-        url: http://loms:8081
+        url: loms:8081
     products-service:
-        token: testtoken
-        url: http://route256.pavl.uk:8080
+        token: DnaNIiL3NecPHwgxLzGqEhUL
+        url: route256.pavl.uk:8082

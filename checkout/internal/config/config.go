@@ -9,6 +9,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	EnvDev  = "dev"
+	EnvProd = "prod"
+)
+
 type ConfigStruct struct {
 	Services struct {
 		Loms struct {
@@ -19,7 +24,11 @@ type ConfigStruct struct {
 			URL   string `yaml:"url"`
 		} `yaml:"products-service"`
 	} `yaml:"services"`
-	Storage struct {
+	Env         string `yaml:"env"`
+	MetricsPort int    `yaml:"metrics-port"`
+	WebPort     int    `yaml:"web-port"`
+	ServiceName string `yaml:"service-name"`
+	Storage     struct {
 		PostgresDSN string
 	}
 }

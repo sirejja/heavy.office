@@ -26,6 +26,7 @@ services:
       - ZOOKEEPER_SERVERS=zookeeper:2888:3888
     networks:
       - net
+    restart: unless-stopped
   kafka1:
     image: confluentinc/cp-kafka:latest
     healthcheck:
@@ -44,6 +45,7 @@ services:
       - ZOOKEEPER=zookeeper:2181
     networks:
       - net
+    restart: unless-stopped
   kafka2:
     image: confluentinc/cp-kafka:latest
     healthcheck:
@@ -62,6 +64,7 @@ services:
       - ZOOKEEPER=zookeeper:2181
     networks:
       - net
+    restart: unless-stopped
   kafka3:
     image: confluentinc/cp-kafka:latest
     healthcheck:
@@ -80,3 +83,4 @@ services:
       - ZOOKEEPER=zookeeper:2181
     networks:
       - net
+    restart: unless-stopped
