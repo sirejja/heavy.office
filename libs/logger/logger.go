@@ -18,7 +18,7 @@ func New(devel bool) *zap.Logger {
 	} else {
 		cfg := zap.NewProductionConfig()
 		cfg.DisableCaller = true
-		cfg.DisableStacktrace = true
+		cfg.DisableStacktrace = false
 		cfg.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 		l, err = cfg.Build()
 	}
