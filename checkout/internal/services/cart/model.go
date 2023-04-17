@@ -19,6 +19,8 @@ type ICartProcessor interface {
 	PurchaseCart(ctx context.Context, user int64) (int64, error)
 }
 
+var _ ICartProcessor = (*Cart)(nil)
+
 type Cart struct {
 	lomsClient        loms.ILOMSClient
 	productsClient    products.IProductServiceClient

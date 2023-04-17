@@ -38,7 +38,7 @@ error-high-load-checkout:
 --proto ./checkout/api/v1/checkout_v1.proto \
 --call checkout.Checkout/ListCart \
 -c 10 -n 1000000 --rps 200 \
--d '{"user": 8}' 0.0.0.0:8080
+-d '{"user": 81}' 0.0.0.0:8080
 
 high-load-loms:
 	ghz --insecure --async \

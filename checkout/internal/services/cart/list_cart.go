@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"route256/checkout/internal/models"
+	"route256/libs/cache/inmemory"
 	"route256/libs/worker_pool"
 	"sync"
 )
@@ -34,12 +35,17 @@ func (c *Cart) processGetProductBatch(ctx context.Context, user int64) ([]models
 	for _, cartProduct := range cartProducts {
 		cartProduct := cartProduct
 		callbacks = append(callbacks, func(struct{}) *worker_pool.OutSink[*models.CartProduct] {
-			err = c.productsLimiter.Wait(ctx)
-			if err != nil {
-				return &worker_pool.OutSink[*models.CartProduct]{Res: nil, Err: fmt.Errorf("%s: %w", op, err)}
-			}
 
-			product, err := c.productsClient.GetProduct(ctx, cartProduct.SKU)
+			inmemory.CacheRequestsTotal.Inc()
+			product, err := c.productsClient.GetProductCached(cartProduct.SKU)
+			if err != nil {
+				err = nil
+				err = c.productsLimiter.Wait(ctx)
+				if err != nil {
+					return &worker_pool.OutSink[*models.CartProduct]{Res: nil, Err: fmt.Errorf("%s: %w", op, err)}
+				}
+				product, err = c.productsClient.GetProduct(ctx, cartProduct.SKU)
+			}
 			if err != nil {
 				return &worker_pool.OutSink[*models.CartProduct]{Res: nil, Err: fmt.Errorf("%s: %w", op, err)}
 			}
@@ -74,6 +80,7 @@ func (c *Cart) processGetProductBatch(ctx context.Context, user int64) ([]models
 	resultCartProducts := make([]models.CartProduct, 0, len(cartProducts))
 	batchingPool.Submit(ctx, tasks)
 
+	// TODO check goroutine leak
 	go func() {
 		for res := range workerCh {
 			wg.Done()
