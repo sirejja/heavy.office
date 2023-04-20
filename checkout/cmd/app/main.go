@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
+	"route256/libs/cache/inmemory"
 )
 
 func main() {
@@ -88,8 +89,11 @@ func main() {
 	}
 	defer productsServiceConn.Close()
 
+	cache := inmemory.New(30, time.Hour)
+	inmemory.InitMetricsCache(cfg.ServiceName)
+
 	productsLimiter := rate.NewLimiter(rate.Every(time.Second/100), 10)
-	productsClient, err := products.New(productsServiceConn, cfg.Services.Products.Token)
+	productsClient, err := products.New(productsServiceConn, cfg.Services.Products.Token, cache)
 	if err != nil {
 		logger.Fatal("failed to create productsClient", zap.Error(err))
 	}
